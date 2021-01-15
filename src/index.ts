@@ -94,7 +94,6 @@ async function playOnAppleTv(url: string, appleTvId: string) {
     }
     const command = ["play-on-apple-tv", `$(npx youtube-dl -f 136 --get-url '${url}')`, appleTvId]
     
-    // console.log(`Running command npx ${command}`);
     spawn('npx', command, { stdio: 'inherit' });
 }
 
