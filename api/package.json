@@ -20,7 +20,8 @@
     "pm2": "^4.4.0",
     "rarbg-api": "^1.1.4",
     "torrent-search-api": "^2.1.1",
-    "transmission-promise": "^1.1.4"
+    "transmission-promise": "^1.1.4",
+    "webtorrent-cli": "^3.2.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.167",
