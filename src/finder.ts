@@ -10,7 +10,7 @@ const imdbApi = new Client({ apiKey: config.omdb.apiKey });
 
 TorrentSearchApi.enableProvider('1337x');
 TorrentSearchApi.enableProvider('Rarbg');
-//TorrentSearchApi.enableProvider('Yts');
+// TorrentSearchApi.enableProvider('Yts');
 //TorrentSearchApi.enableProvider('Eztv');
 
 export const search = async (name: string, type: 'Movies' | 'TV') => {
