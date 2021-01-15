@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Search Torrents</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+  </head>
+  <body>
+    <h1>Search Torrents</h1>
+    <form action="/torrents" method="get">
+      <label for="search_name">Enter movie or TV show name: </label>
+      <input id="search_name" type="text" name="name" placeholder="Superbad">
+      <input type="submit" value="OK">
+    </form>
+    {{{ htmlResults }}}
+  </body>
+</html>
