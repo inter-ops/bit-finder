@@ -2,10 +2,9 @@
 import config from "./config"
 import rarbgApi from 'rarbg-api'
 import { Client } from 'imdb-api'
-const imdbApi = new Client({ apiKey: config.omdb.apiKey });
-
 import TorrentSearchApi from 'torrent-search-api'
 
+const imdbApi = new Client({ apiKey: config.omdb.apiKey });
 
 // too many providers slows search significantly, using current best
 
@@ -13,7 +12,6 @@ TorrentSearchApi.enableProvider('1337x');
 TorrentSearchApi.enableProvider('Rarbg');
 //TorrentSearchApi.enableProvider('Yts');
 //TorrentSearchApi.enableProvider('Eztv');
-
 
 export const search = async (name: string, type: 'Movies' | 'TV') => {
   const torrents = await TorrentSearchApi.search(name, type, 15);
