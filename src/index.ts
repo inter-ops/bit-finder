@@ -33,14 +33,14 @@ async function webtorrent(magnet: string, streamType?: string) {
     const confirmAnswers = await inquirer.prompt([
         {
             type: "confirm",
-            name: "confirmInteractiveCli",
-            message: "Starting the interactive Webtorrent CLI. Continue?",
+            name: "confirmDownload",
+            message: "Starting media download. Continue?",
             default: true
         }
     ]);
 
     // cancel action and restart cli
-    if (!confirmAnswers.confirmInteractiveCli) {
+    if (!confirmAnswers.confirmDownload) {
         console.log("Cancelling action...")
         return cli()
     }
@@ -81,14 +81,14 @@ async function playOnAppleTv(url: string, appleTvId: string) {
     const confirmAnswers = await inquirer.prompt([
         {
             type: "confirm",
-            name: "confirmInteractiveCli",
-            message: "Starting play-on-apple-tv interactive CLI. Continue?",
+            name: "confirmStream",
+            message: "Starting AppleTV stream. Continue?",
             default: true
         }
     ]);
 
     // cancel action and restart cli
-    if (!confirmAnswers.confirmInteractiveCli) {
+    if (!confirmAnswers.confirmStream) {
         console.log("Cancelling action...")
         return cli()
     }
@@ -282,12 +282,12 @@ async function cli() {
                 message: "Where do you want to watch from?",
                 choices: [
                     {
-                        name: "YouTube",
-                        value: "youtube"
-                    },
-                    {
                         name: "Torrents",
                         value: "torrents"
+                    },
+                    {
+                        name: "YouTube",
+                        value: "youtube"
                     }
                 ]
             }
