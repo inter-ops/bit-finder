@@ -1,4 +1,3 @@
-"use strict";
 import config from "./config"
 import rarbgApi from 'rarbg-api'
 import { Client } from 'imdb-api'
