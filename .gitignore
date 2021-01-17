@@ -2,3 +2,4 @@
 **/.env
 **/PlexConnectCerts
 **/dist
+.eslintcache

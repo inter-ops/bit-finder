@@ -1,0 +1,18 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended"
+  ],
+  "rules": {
+    "quotes": 0,
+    "semi": 0,
+    "object-curly-spacing": 0,
+    "indent": 0,
+    "complexity": 0,
+    "brace-style": 0,
+    "comma-dangle": 0,
+    "@typescript-eslint/no-explicit-any": 0
+  }
+}
