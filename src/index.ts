@@ -6,6 +6,10 @@ import clipboardy from "clipboardy";
 import { spawn } from "child_process";
 import autocomplete from "inquirer-autocomplete-prompt";
 // import _ from "lodash";
+import { SearchResult } from "imdb-api";
+import terminalImage from "terminal-image";
+import axios from "axios";
+import { Torrent } from "torrent-search-api";
 
 export default { finder, parser, downloader };
 
@@ -27,6 +31,8 @@ function formatField(value: string, widthOfField: number) {
 
 const titleLength = 60;
 const seedLength = 13;
+const yearLength = 6;
+const typeLength = 10;
 const peerLength = 13;
 const sizeLength = 12;
 
@@ -166,7 +172,17 @@ async function torrentsHandler() {
 
         return choices;
       }
-    },
+    }
+  ]);
+
+  await torrentActionHandler(answers.torrent);
+}
+
+async function torrentActionHandler(torrent: Torrent) {
+  const magnet = await finder.getMagnet(torrent);
+  console.log("Fetched magnet successfully.");
+
+  const answers = await inquirer.prompt([
     {
       type: "list",
       name: "action",
@@ -198,9 +214,6 @@ async function torrentsHandler() {
       pageSize: 8
     }
   ]);
-
-  const magnet = await finder.getMagnet(answers.torrent);
-  console.log("Fetched magnet successfully.");
 
   // TODO: custom video player
   switch (answers.action) {
@@ -279,6 +292,64 @@ async function youtubeHandler() {
   }
 }
 
+async function imdbSearchbHandler() {
+  const answers = await inquirer.prompt([
+    {
+      type: "autocomplete",
+      name: "selection",
+      message: "Search IMDb: ",
+      source: async (_answersSoFar: any, input: string) => {
+        if (!input) return [];
+        const results = (await finder.searchImdb({ name: input })) ?? [];
+        const choices = ((results as SearchResult[]) ?? []).map((result) => {
+          const label = `${formatField(result.title, titleLength)}|${formatField(
+            `${result.year}`,
+            yearLength
+          )}|${formatField(`${result.type === "movie" ? "Movie" : "TV Show"}`, typeLength)}`;
+          return {
+            name: label,
+            value: result
+          };
+        });
+
+        return choices;
+      }
+    }
+  ]);
+
+  const result = await finder.getImdbResult(answers.selection.imdbid);
+  const response = await axios.get(result.poster, { responseType: "arraybuffer" });
+  const buffer = Buffer.from(response.data, "binary");
+  const image = await terminalImage.buffer(buffer, {
+    width: "50%",
+    height: "50%",
+    preserveAspectRatio: true
+  });
+  if (image) console.log("Poster:\n", image);
+  console.log(result);
+
+  console.log("Searching for torrent info...");
+  const torrents = await finder.search(
+    `${result.title} ${result.year}`,
+    result.type === "movie" ? "Movies" : "TV",
+    1
+  );
+  const torrent = torrents?.[0] as any;
+  if (!torrents) throw new Error("Torrent could not be found for movie " + result.title);
+
+  console.log(
+    `${formatField(torrent.title, titleLength)}|${formatField(
+      `${torrent.seeds} seeds`,
+      seedLength
+    )}|${formatField(`${torrent.peers} peers`, peerLength)}|${formatField(
+      torrent.size,
+      sizeLength
+    )}`
+  );
+
+  await torrentActionHandler(torrent);
+}
+
 async function cli() {
   try {
     const initialAnswers = await inquirer.prompt([
@@ -294,6 +365,10 @@ async function cli() {
           {
             name: "YouTube",
             value: "youtube"
+          },
+          {
+            name: "IMDb Search",
+            value: "imdb"
           }
         ]
       }
@@ -301,17 +376,22 @@ async function cli() {
 
     switch (initialAnswers.source) {
       case "youtube":
-        youtubeHandler();
+        await youtubeHandler();
         break;
       case "torrents":
-        torrentsHandler();
+        await torrentsHandler();
+        break;
+      case "imdb":
+        await imdbSearchbHandler();
         break;
     }
   } catch (err) {
     if (err.isTtyError) {
       // Prompt couldn't be rendered in the current environment
+      console.error("Tty error: ", err);
     } else {
       // Something else went wrong
+      console.error(err);
     }
   }
 }
