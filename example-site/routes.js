@@ -1,7 +1,10 @@
 "use strict";
 const express = require('express');
 const router = express.Router();
-const {downloader, parser, finder} = require("bit-finder-api") // TODO: link to bit-finder/api
+// const {downloader, parser, finder} = require("bit-finder-api") // TODO: link to bit-finder/api
+const downloader = require("../src/downloader")
+// const parser = require("../src/parser")
+const finder = require("../src/finder")
 
 // this is hacky but works for our purpose
 let cachedTorrents = [];
