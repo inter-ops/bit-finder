@@ -13,6 +13,7 @@
     "complexity": 0,
     "brace-style": 0,
     "comma-dangle": 0,
-    "@typescript-eslint/no-explicit-any": 0
+    "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/explicit-module-boundary-types": 0
   }
 }

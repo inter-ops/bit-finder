@@ -21,5 +21,3 @@ npm install -g bit-finder
 # launch interactice search
 bit-finder
 ```
-
-Support for performing actions directly with CLI flags & arguments coming soon!
