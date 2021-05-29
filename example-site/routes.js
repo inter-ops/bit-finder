@@ -1,24 +1,24 @@
 "use strict";
-const express = require('express');
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 // const {downloader, parser, finder} = require("bit-finder-api") // TODO: link to bit-finder/api
-const downloader = require("../dist/downloader")
+import { addTorrent } from "../dist/downloader";
 // const parser = require("../src/parser")
-const finder = require("../dist/finder")
+import { search, getMagnet } from "../dist/finder";
 
 // this is hacky but works for our purpose
 let cachedTorrents = [];
 
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Bit-Finder' });
+router.get("/", function (req, res) {
+  res.render("index", { title: "Bit-Finder" });
 });
 
 router.get("/torrents", async (req, res, next) => {
   try {
     const { name } = req.query;
-    if (!name || name === "") return res.render('torrents', {});
+    if (!name || name === "") return res.render("torrents", {});
 
-    cachedTorrents = await finder.search(name)
+    cachedTorrents = await search(name);
 
     if (cachedTorrents.length === 0) console.log("No torrents found");
 
@@ -27,7 +27,7 @@ router.get("/torrents", async (req, res, next) => {
       <h3>Torrents:</h3>
       <table>
         <tr><th>Title</th><th>Seeds</th><th>Peers</th><th>Size</th><th>Provider</th><th>Download</th></tr>
-        ${cachedTorrents.map(torrent => {
+        ${cachedTorrents.map((torrent) => {
           return `
             <tr>
               <td>${torrent.title}</td>
@@ -41,43 +41,40 @@ router.get("/torrents", async (req, res, next) => {
                 </form>
               </td>
             </tr>
-          `
+          `;
         })}
       </table>
-    `
-    return res.render('torrents', { htmlResults });
+    `;
+    return res.render("torrents", { htmlResults });
+  } catch (err) {
+    return next(err);
   }
-  catch(err) {
-    return next(err)
-  }
-})
+});
 
 router.post("/api/torrents", async (req, res, next) => {
   try {
     const { torrentIdx } = req.body;
-    const chosenTorrent = cachedTorrents?.[torrentIdx]
+    const chosenTorrent = cachedTorrents?.[torrentIdx];
 
     let htmlResults;
     if (!chosenTorrent) {
-      // TODO: add button to go back to search page
-      htmlResults = `Error!!!! Torrent not found. Please search again`
-    }
-    else {
+      htmlResults = `<h3>Error - Torrent not found</h3>`;
+    } else {
       console.log(`Chosen torrent at index ${torrentIdx}`, chosenTorrent);
-      const magnet = await finder.getMagnet(chosenTorrent)
-      await downloader.addTorrent(magnet)
-      htmlResults = `<br/><h1>Success!</h1><br/><h3>Torrent ${chosenTorrent.title} added successfully</h3>`
+      const magnet = await getMagnet(chosenTorrent);
+      await addTorrent(magnet);
+      htmlResults = `<br/><h1>Success!</h1><br/><h3>Torrent ${chosenTorrent.title} added successfully</h3>`;
     }
+
+    htmlResults += `<br/>Go back to search again<br/><button type="button" onclick="javascript:history.back()">Back</button>`;
 
     // ensure memory leaks dont happen, if user clicks back they could select an index
     // from an old list and get the wrong torrent. This will ensure they reload.
     cachedTorrents = [];
-    return res.render('torrents', { htmlResults });
+    return res.render("torrents", { htmlResults });
+  } catch (err) {
+    return next(err);
   }
-  catch(err) {
-    return next(err)
-  }
-})
+});
 
-
-module.exports = router;
+export default router;

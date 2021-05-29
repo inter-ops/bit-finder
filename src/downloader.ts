@@ -17,6 +17,8 @@ if (config.transmission.username && config.transmission.password) {
 }
 
 export const addTorrent = async (magnet: string) => {
+  if (!transmission) throw new Error("No transmission config provided, torrent could not be saved");
+
   console.log("Adding torrent to transmission");
   console.log(magnet);
   const res = await transmission.add(magnet);
