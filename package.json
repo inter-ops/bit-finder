@@ -1,15 +1,16 @@
 {
   "name": "bit-finder",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Francesco Virga @francescov1",
   "private": true,
   "main": "./dist/index.js",
   "bin": {
-    "btf": "./dist/cli.js"
+    "bf": "./dist/index.js"
   },
   "scripts": {
     "start": "node ./dist/index.js",
-    "build": "npx tsc",
+    "dev": "ts-node ./src/index.ts",
+    "build": "tsc",
     "prepack": "rm -rf dist && npm run build",
     "postinstall": "patch-package"
   },
@@ -37,12 +38,14 @@
     "terminal-image": "^1.2.1",
     "torrent-search-api": "^2.1.1",
     "transmission-promise": "^1.1.4",
-    "webtorrent-cli": "^3.2.1"
+    "webtorrent-cli": "^3.2.1",
+    "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@types/inquirer": "^7.3.1",
     "@types/lodash": "^4.14.167",
     "@types/torrent-search-api": "^2.0.0",
+    "@types/yargs": "^17.0.10",
     "@typescript-eslint/eslint-plugin": "^4.13.0",
     "@typescript-eslint/parser": "^4.13.0",
     "eslint": "^7.13.0",

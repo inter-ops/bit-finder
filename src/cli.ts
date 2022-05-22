@@ -1,64 +1,18 @@
 #!/usr/bin/env node
 
-import * as finder from "./finder";
-import * as parser from "./parser";
-import * as downloader from "./downloader";
 import inquirer from "inquirer";
-import clipboardy from "clipboardy";
 import { spawn } from "child_process";
 import autocomplete from "inquirer-autocomplete-prompt";
-import { SearchResult } from "imdb-api";
 import terminalImage from "terminal-image";
 import axios from "axios";
-import { Torrent } from "torrent-search-api";
-
-export default { finder, parser, downloader };
+import { Torrent } from "./clients/torrentSearch";
+import { TorrentService, ImdbService } from "./services";
+import { formatField } from "./utils/listFormatter";
+import { PEER_LENGTH, SEED_LENGTH, SIZE_LENGTH, TITLE_LENGTH } from "./constants";
+import * as webtorrentClient from "./clients/webtorrent";
+import { copyMagnet } from "./clients/clipboard";
 
 inquirer.registerPrompt("autocomplete", autocomplete);
-
-function formatField(value: string, widthOfField: number) {
-  let valStr = `${value}`;
-
-  // +2 for space on either side
-  if (valStr.length + 2 > widthOfField) valStr = valStr.slice(0, widthOfField - 2 - 3) + "...";
-
-  // add padding until valStr is correct length
-  while (valStr.length + 2 < widthOfField) {
-    valStr = valStr + " ";
-  }
-
-  return ` ${valStr} `;
-}
-
-const titleLength = 60;
-const seedLength = 13;
-const yearLength = 6;
-const typeLength = 10;
-const peerLength = 13;
-const sizeLength = 12;
-
-// TODO: switch to use the webtorrent programmatic interface
-async function webtorrent(magnet: string, streamType?: string) {
-  const confirmAnswers = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirmDownload",
-      message: "Starting media download. Continue?",
-      default: true
-    }
-  ]);
-
-  // cancel action and restart cli
-  if (!confirmAnswers.confirmDownload) {
-    console.log("Cancelling action...");
-    return cli();
-  }
-
-  const command = ["webtorrent", `${magnet}`];
-  if (streamType) command.push(`--${streamType}`);
-
-  spawn("npx", command, { stdio: "inherit" });
-}
 
 async function getAppleTvs() {
   const list: string[] = [];
@@ -142,11 +96,11 @@ async function torrentsHandler() {
       choices: [
         {
           name: "Movies",
-          value: "Movies"
+          value: "movie"
         },
         {
           name: "TV Shows",
-          value: "TV"
+          value: "tv"
         }
       ]
     },
@@ -155,22 +109,11 @@ async function torrentsHandler() {
       name: "torrent",
       message: "Search torrents: ",
       source: async (answersSoFar: any, input: string) => {
+        // TODO: fix search lag
         // await debouncedSearch(input, answersSoFar.mediaType);
         if (!input) return [];
-        const torrents = await finder.search(input, answersSoFar.mediaType);
-        const choices = torrents.map((torrent: any) => {
-          const label = `${formatField(torrent.title, titleLength)}|${formatField(
-            `${torrent.seeds} seeds`,
-            seedLength
-          )}|${formatField(`${torrent.peers} peers`, peerLength)}|${formatField(
-            torrent.size,
-            sizeLength
-          )}`;
-          return {
-            name: label,
-            value: torrent
-          };
-        });
+        const torrents = await TorrentService.search(input, answersSoFar.mediaType);
+        const choices = TorrentService.formatSearchResults(torrents, { includeIndex: true });
 
         return choices;
       }
@@ -181,7 +124,7 @@ async function torrentsHandler() {
 }
 
 async function torrentActionHandler(torrent: Torrent) {
-  const magnet = await finder.getMagnet(torrent);
+  const magnet = await TorrentService.getMagnet(torrent);
   console.log("Fetched magnet successfully.");
 
   const answers = await inquirer.prompt([
@@ -217,19 +160,17 @@ async function torrentActionHandler(torrent: Torrent) {
     }
   ]);
 
-  // TODO: custom video player
   switch (answers.action) {
     case "magnetCopy":
-      clipboardy.writeSync(magnet);
-      console.log("Magnet copied to clipboard 🚀");
+      copyMagnet(magnet);
       break;
     case "download":
-      webtorrent(magnet);
+      webtorrentClient.download(magnet);
       break;
     case "airplay":
     case "chromecast":
     case "vlc":
-      webtorrent(magnet, answers.action);
+      webtorrentClient.cast(magnet, answers.action);
       break;
   }
 }
@@ -302,24 +243,15 @@ async function imdbSearchbHandler() {
       message: "Search IMDb: ",
       source: async (_answersSoFar: any, input: string) => {
         if (!input) return [];
-        const results = (await finder.searchImdb({ name: input })) ?? [];
-        const choices = ((results as SearchResult[]) ?? []).map((result) => {
-          const label = `${formatField(result.title, titleLength)}|${formatField(
-            `${result.year}`,
-            yearLength
-          )}|${formatField(`${result.type === "movie" ? "Movie" : "TV Show"}`, typeLength)}`;
-          return {
-            name: label,
-            value: result
-          };
-        });
+        const results = await ImdbService.search(input);
+        const choices = ImdbService.formatSearchResults(results);
 
         return choices;
       }
     }
   ]);
 
-  const result = await finder.getImdbResult(answers.selection.imdbid);
+  const result = await ImdbService.getResultByImdbId(answers.selection.imdbid);
   const response = await axios.get(result.poster, { responseType: "arraybuffer" });
   const buffer = Buffer.from(response.data, "binary");
   const image = await terminalImage.buffer(buffer, {
@@ -331,21 +263,21 @@ async function imdbSearchbHandler() {
   console.log(result);
 
   console.log("Searching for torrent info...");
-  const torrents = await finder.search(
+  const torrents = await TorrentService.search(
     `${result.title} ${result.year}`,
-    result.type === "movie" ? "Movies" : "TV",
+    result.type === "movie" ? "movie" : "tv",
     1
   );
   const torrent = torrents?.[0] as any;
   if (!torrents) throw new Error("Torrent could not be found for movie " + result.title);
 
   console.log(
-    `${formatField(torrent.title, titleLength)}|${formatField(
+    `${formatField(torrent.title, TITLE_LENGTH)}|${formatField(
       `${torrent.seeds} seeds`,
-      seedLength
-    )}|${formatField(`${torrent.peers} peers`, peerLength)}|${formatField(
+      SEED_LENGTH
+    )}|${formatField(`${torrent.peers} peers`, PEER_LENGTH)}|${formatField(
       torrent.size,
-      sizeLength
+      SIZE_LENGTH
     )}`
   );
 
@@ -387,7 +319,7 @@ async function cli() {
         await imdbSearchbHandler();
         break;
     }
-  } catch (err) {
+  } catch (err: any) {
     if (err.isTtyError) {
       // Prompt couldn't be rendered in the current environment
       console.error("Tty error: ", err);
@@ -398,4 +330,4 @@ async function cli() {
   }
 }
 
-cli();
+export default cli;
