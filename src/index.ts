@@ -1,6 +1,6 @@
+#!/usr/bin/env node
 import cli from "./cli";
 import yargs from "yargs";
-// import { hideBin } from 'yargs/helpers';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { hideBin } = require("yargs/helpers");
 import { TorrentService } from "./services";
