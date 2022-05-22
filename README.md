@@ -57,11 +57,11 @@ bf torrents --help
 Search and download torrents
 
 Commands:
-  index.js torrents search      Search torrents
-  index.js torrents stream      Stream a torrent's data inline
-  index.js torrents download    Download a torrent in the current working
-                                directory
-  index.js torrents get-magnet  Copy a torrent's magnet URL
+  bf torrents search      Search torrents
+  bf torrents stream      Stream a torrent's data inline
+  bf torrents download    Download a torrent in the current working
+                          directory
+  bf torrents get-magnet  Copy a torrent's magnet URL
 
 Options:
       --help         Show help                                         [boolean]
