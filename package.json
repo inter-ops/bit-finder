@@ -1,6 +1,6 @@
 {
   "name": "bit-finder",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Francesco Virga @francescov1",
   "main": "./dist/index.js",
   "bin": {
