@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "strict": true,
     "alwaysStrict": true,
-    "typeRoots": ["./src/types"]
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "include": ["./src/**/*"],
   "exclude": [
