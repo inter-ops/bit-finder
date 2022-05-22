@@ -1,11 +1,11 @@
 {
   "name": "bit-finder",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "Francesco Virga @francescov1",
   "private": true,
   "main": "./dist/index.js",
   "bin": {
-    "btf": "./dist/cli.js"
+    "bf": "./dist/index.js"
   },
   "scripts": {
     "start": "node ./dist/index.js",
