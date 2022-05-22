@@ -68,6 +68,7 @@
     "stream"
   ],
   "license": "MIT",
+  "bugs": "https://github.com/inter-ops/bit-finder/issues",
   "repository": "bit-finder",
   "types": "dist/index.d.ts",
   "lint-staged": {
