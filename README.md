@@ -1,5 +1,9 @@
 # Bit-Finder
 
+[![Version](https://img.shields.io/npm/v/bit-finder.svg)](https://npmjs.org/package/bit-finder)
+[![License](https://img.shields.io/npm/l/bit-finder.svg)](https://github.com/inter-ops/bit-finder/blob/master/package.json)
+<!-- [![npm](https://img.shields.io/npm/dt/bit-findern)](https://www.npmjs.com/package/bit-finder) -->
+
 A tollkit for searcing, downloading and streaming media using torrents, YouTube, and more.
 
 # Features
@@ -13,11 +17,54 @@ A tollkit for searcing, downloading and streaming media using torrents, YouTube,
 
 <i>Note: YouTube functionality is currently broken for certain videos.</i>
 
-# Usage
+# Install
 
 ```bash
+# npm
 npm install -g bit-finder
 
-# launch interactice search
-bit-finder
+# yarn
+yarn global add bit-finder
+```
+
+# Usage
+
+
+### General
+
+```bash
+bf --help
+```
+
+```bash
+Commands:
+  bf torrents  Search and download torrents
+
+Options:
+      --help         Show help                                         [boolean]
+      --version      Show version number                               [boolean]
+  -i, --interactive  Run in interactive mode                           [boolean]
+```
+
+
+### Torrents 
+
+```bash
+bf torrents --help
+```
+
+```
+Search and download torrents
+
+Commands:
+  index.js torrents search      Search torrents
+  index.js torrents stream      Stream a torrent's data inline
+  index.js torrents download    Download a torrent in the current working
+                                directory
+  index.js torrents get-magnet  Copy a torrent's magnet URL
+
+Options:
+      --help         Show help                                         [boolean]
+      --version      Show version number                               [boolean]
+  -i, --interactive  Run in interactive mode                           [boolean]
 ```
