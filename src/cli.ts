@@ -58,28 +58,6 @@ async function downloadYoutube(url: string) {
 }
 
 async function torrentsHandler() {
-  // debouncer seems to slow performance. For now we wont use it
-  // let results: any[] = [];
-  // const debouncedSearch = _.debounce(async (input: string, mediaType: "Movies" | "TV") => {
-  //     if (!input) {
-  //         results = []
-  //         return;
-  //     }
-  //     const torrents = await finder.search(input, mediaType)
-  //     const choices = torrents.map((torrent: any) => {
-  //         const label = `${formatField(torrent.title, titleLength)}|${formatField(`${torrent.seeds} seeds`, seedLength)}|${formatField(`${torrent.peers} peers`, peerLength)}|${formatField(torrent.size, sizeLength)}`
-  //         return {
-  //             name: label,
-  //             value: torrent
-  //         }
-  //     })
-
-  //     results = choices
-  // }, 500, {
-  //     leading: true,
-  //     trailing: false
-  // });
-
   const mediaType = await rawlist({
     message: "Type of media",
     choices: [
@@ -97,8 +75,6 @@ async function torrentsHandler() {
   const answer = await autocomplete({
     message: "Search torrents: ",
     source: async (input) => {
-      // TODO: fix search lag
-      // await debouncedSearch(input, mediaType);
       if (!input) return [];
       const torrents = await TorrentService.search(input, mediaType);
       const choices = TorrentService.formatSearchResults(torrents, { includeIndex: true });
