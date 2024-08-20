@@ -1,6 +1,6 @@
-import imdbClient, { ImdbError, SearchResult } from "../clients/imdb";
-import { formatField } from "../utils/listFormatter";
-import { TITLE_LENGTH, TYPE_LENGTH, YEAR_LENGTH } from "../constants";
+import imdbClient, { ImdbError, SearchResult } from "../clients/imdb.js";
+import { formatField } from "../utils/listFormatter.js";
+import { TITLE_LENGTH, TYPE_LENGTH, YEAR_LENGTH } from "../constants.js";
 
 export const search = async (name: string) => {
   try {

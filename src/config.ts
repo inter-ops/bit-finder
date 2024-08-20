@@ -1,4 +1,3 @@
-global.Promise = require("bluebird");
 import dotenv from "dotenv";
 dotenv.config();
 

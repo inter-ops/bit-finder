@@ -1,10 +1,9 @@
 "use strict";
-import { Router } from "express";
+const { Router } = require("express");
 const router = Router();
 // const {downloader, parser, finder} = require("bit-finder-api") // TODO: link to bit-finder/api
-import { addTorrent } from "../dist/downloader";
+const { add: addTorrent, search, getMagnet } = require("../dist/services/torrent");
 // const parser = require("../src/parser")
-import { search, getMagnet } from "../dist/finder";
 
 // this is hacky but works for our purpose
 let cachedTorrents = [];
@@ -77,4 +76,4 @@ router.post("/api/torrents", async (req, res, next) => {
   }
 });
 
-export default router;
+module.exports = router;

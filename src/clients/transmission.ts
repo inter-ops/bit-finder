@@ -1,4 +1,4 @@
-import config from "../config";
+import config from "../config.js";
 import Transmission from "transmission-promise";
 
 // TODO: command to add transmission seed box config. This walks through asking the user for the info, then saves it at ~/.bit-finder
