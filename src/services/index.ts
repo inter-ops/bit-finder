@@ -1,3 +1,3 @@
-import * as TorrentService from "./torrent";
-import * as ImdbService from "./imdb";
+import * as TorrentService from "./torrent.js";
+import * as ImdbService from "./imdb.js";
 export { TorrentService, ImdbService };

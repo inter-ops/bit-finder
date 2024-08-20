@@ -1,14 +1,14 @@
 import _ from "lodash";
-import torrentSearchClient, { Torrent } from "../clients/torrentSearch";
-import transmissionClient from "../clients/transmission";
-import { formatField } from "../utils/listFormatter";
+import torrentSearchClient, { Torrent } from "../clients/torrentSearch.js";
+import transmissionClient from "../clients/transmission.js";
+import { formatField } from "../utils/listFormatter.js";
 import {
   TITLE_LENGTH,
   SEED_LENGTH,
   PEER_LENGTH,
   SIZE_LENGTH,
   DEFAULT_RESULT_COUNT
-} from "../constants";
+} from "../constants.js";
 
 export const search = async (
   name: string,
@@ -68,7 +68,7 @@ export const formatSearchResults = (
     }
     return {
       name: label,
-      value: torrent
+      value: torrent as Torrent
     };
   });
 

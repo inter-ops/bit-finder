@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import cli from "./cli";
+import cli from "./cli.js";
 import yargs from "yargs";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { hideBin } = require("yargs/helpers");
-import { TorrentService } from "./services";
-import { DEFAULT_RESULT_COUNT } from "./constants";
-import * as webtorrentClient from "./clients/webtorrent";
-import { copyMagnet } from "./clients/clipboard";
+// const { hideBin } = require("yargs/helpers");
+import { hideBin } from "yargs/helpers";
+import { TorrentService } from "./services/index.js";
+import { DEFAULT_RESULT_COUNT } from "./constants.js";
+import * as webtorrentClient from "./clients/webtorrent.js";
+import { copyMagnet } from "./clients/clipboard.js";
 
 type AllowedTypes = "all" | "movie" | "tv";
 const allowedTypes = ["all", "movie", "tv"];

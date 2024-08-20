@@ -4,10 +4,11 @@
     "outDir": "./dist",
     "allowJs": true,
     "checkJs": false,
-    "target": "es6",
-    "module": "commonjs",
+    "target": "es2020",
+    "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "strict": true,
     "alwaysStrict": true,
     "typeRoots": ["./src/types", "./node_modules/@types"]

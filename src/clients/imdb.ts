@@ -1,4 +1,4 @@
-import config from "../config";
+import config from "../config.js";
 import { Client } from "imdb-api";
 
 export { ImdbError, SearchResult } from "imdb-api";
