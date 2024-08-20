@@ -14,6 +14,16 @@ function isValidType(type: string): type is AllowedTypes {
   return allowedTypes.includes(type);
 }
 
+// TODO:
+// Next, need to fix video streaming.
+// Currently, downloaded torrents are streamed to a localhost URL which
+// video players can then attach to. For the localhost URL, see https://github.com/webtorrent/webtorrent-cli/blob/7e822d8352532529b6fbb6e0c7ed7f6000d0c634/bin/cmd.js#L401.
+// To do this, we will want to initialize a download (in some temp or cache folder), then pass the URL to our video player.
+// Seems like this should already be somewhat doable currently by using "bf torrents download ..." and then copying the "Server running at" URL and passing to video player.
+// To set this up properly in an app, couple ideas:
+//   1. Remove webtorrent-cli and use webtorrent directly. Should be able to copy most of the code we need from webtorrent-cli
+//   2. Use webtorrent-cli directly from the application.
+
 const args = async () => {
   // TODO: cleanup, abstract out common functionality
   const results = await yargs(hideBin(process.argv))

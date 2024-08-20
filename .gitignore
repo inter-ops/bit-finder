@@ -3,3 +3,4 @@
 **/PlexConnectCerts
 **/dist
 .eslintcache
+.DS_Store
