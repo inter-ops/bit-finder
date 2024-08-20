@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/npm/l/bit-finder.svg)](https://github.com/inter-ops/bit-finder/blob/master/package.json)
 <!-- [![npm](https://img.shields.io/npm/dt/bit-findern)](https://www.npmjs.com/package/bit-finder) -->
 
-A tollkit for searcing, downloading and streaming media using torrents, YouTube, and more.
+A toolkit for searching, downloading and streaming media using torrents, YouTube, and more.
 
 # Features
 
