@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { spawn } from "child_process";
 import { input, confirm, rawlist, Separator } from "@inquirer/prompts";
 import autocomplete from "inquirer-autocomplete-standalone";
@@ -10,8 +9,6 @@ import { formatField } from "./utils/listFormatter.js";
 import { PEER_LENGTH, SEED_LENGTH, SIZE_LENGTH, TITLE_LENGTH } from "./constants.js";
 import * as webtorrentClient from "./clients/webtorrent.js";
 import { copyMagnet } from "./clients/clipboard.js";
-
-// inquirer.registerPrompt("autocomplete", autocomplete);
 
 async function getAppleTvs() {
   const list: string[] = [];
