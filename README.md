@@ -7,16 +7,16 @@
 
 A toolkit for searching, downloading and streaming media using torrents, YouTube, and more.
 
-> **WARNING: This is an old revived project. Torrent and IMDb search is quite stable, torrent download sometimes works, everything else is probably broken.**
+**WARNING: This is an old revived project. Torrent and IMDb search is quite stable, torrent download sometimes works, everything else is probably broken.**
 
 # Features
 
-- Search the multiple torrent indexes for the highest seeded Movies & TV shows
-- Stream torrents directly to AppleTV, Chromecast and VLC (more coming!) using [webtorrent-cli](https://github.com/webtorrent/webtorrent-cli)
-- Download torrent directly using [webtorrent-cli](https://github.com/webtorrent/webtorrent-cli)
+- Search multiple torrent indexes for highest seeded Movies & TV shows
+- Stream torrents directly to AppleTV, Chromecast and VLC
+- Download torrents
 - Copy torrent magnet links
-- Download YouTube videos using [youtube-dl](https://github.com/ytdl-org/youtube-dl)
-- Stream YouTube videos to AppleTV (more coming!) using [youtube-dl](https://github.com/ytdl-org/youtube-dl)
+- Stream YouTube videos to AppleTV
+- Download YouTube videos
 
 # Install
 
