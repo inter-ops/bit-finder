@@ -44,7 +44,7 @@ index 9d50b64..b4860ae 100755
    }
  }
 diff --git a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json b/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
-index aa954ff..30d3017 100755
+index aa954ff..ee48ecc 100755
 --- a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
 +++ b/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
 @@ -1,29 +1,29 @@
@@ -68,8 +68,8 @@ index aa954ff..30d3017 100755
 -    "itemSelectors": {
 -      "title": ".torrents_table__torrent_title@text | trim",
 +   "name": "KickassTorrents",
-+   "baseUrl": "kickasstorrents.cr",
-+   "searchUrl": "/usearch/{query}",
++   "baseUrl": "https://katcr.to",
++   "searchUrl": "/usearch/{query}/",
 +   "categories": {
 +      "All": "",
 +      "Movies": "url:{query}/category/movies/1",
@@ -347,3 +347,26 @@ index d2a0656..3c88a42 100755
 +   "enableCloudFareBypass": true
  }
 \ No newline at end of file
+diff --git a/node_modules/torrent-search-api/lib/providers/yts.js b/node_modules/torrent-search-api/lib/providers/yts.js
+index d649180..c562802 100644
+--- a/node_modules/torrent-search-api/lib/providers/yts.js
++++ b/node_modules/torrent-search-api/lib/providers/yts.js
+@@ -6,15 +6,15 @@ class Yts extends TorrentProvider {
+   constructor() {
+     super({
+       name: 'Yts',
+-      baseUrl: 'https://yts.mx',
++      baseUrl: 'https://yts.lt',
+       searchUrl:
+-        '/api/v2/list_movies.json?query_term={query}&sort=seeds&order=desc&set=1',
++        '/api/v2/list_movies.json?query_term={query}&sort=seeds&order=desc&limit=50',
+       categories: {
+         All: '',
+         Movies: ''
+       },
+       defaultCategory: 'All',
+-      resultsPerPageCount: 20
++      resultsPerPageCount: 50
+     });
+   }
+ 

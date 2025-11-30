@@ -7,11 +7,11 @@ TorrentSearchApi.enableProvider("ThePirateBay");
 TorrentSearchApi.enableProvider("TorrentProject");
 TorrentSearchApi.enableProvider("Eztv");
 TorrentSearchApi.enableProvider("Rarbg");
+TorrentSearchApi.enableProvider("Yts");
 
 // TODO: broken, investigate
-// TorrentSearchApi.enableProvider("Torrentz2"); // parsing code is broken
-// TorrentSearchApi.enableProvider("Yts");
-// TorrentSearchApi.enableProvider("KickassTorrents");
+// TorrentSearchApi.enableProvider("Torrentz2"); // CloudFlare protected, parsing broken
+// TorrentSearchApi.enableProvider("KickassTorrents"); // Dynamic loading, selectors broken
 
 // Disabled
 // TorrentSearchApi.enableProvider("1337x"); // Blocked by Cloudflare
