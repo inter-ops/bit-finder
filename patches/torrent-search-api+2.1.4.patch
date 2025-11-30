@@ -43,6 +43,81 @@ index 9d50b64..b4860ae 100755
      );
    }
  }
+diff --git a/node_modules/torrent-search-api/lib/providers/eztv.js b/node_modules/torrent-search-api/lib/providers/eztv.js
+new file mode 100644
+index 0000000..ea4a442
+--- /dev/null
++++ b/node_modules/torrent-search-api/lib/providers/eztv.js
+@@ -0,0 +1,40 @@
++const TorrentProvider = require('../TorrentProvider');
++
++class Eztv extends TorrentProvider {
++  constructor() {
++    super({
++      name: 'Eztv',
++      baseUrl: 'https://eztv.re',
++      searchUrl: '/search/{query}',
++      categories: {
++        All: ''
++      },
++      defaultCategory: 'All',
++      resultsPerPageCount: 50,
++      itemsSelector: 'tr.forum_header_border',
++      itemSelectors: {
++        title: 'a.epinfo@text',
++        link: 'a.download_1@href',
++        magnet: 'a.magnet@href',
++        time: 'td:nth-last-child(2)@text',
++        seeds: 'td:nth-last-child(1) | int',
++        size: 'td:nth-last-child(3)@text',
++        desc: 'a.epinfo@href'
++      },
++      paginateSelector: 'a:contains( next page)@href',
++      torrentDetailsSelector: '.section_thread_post@html'
++    });
++  }
++
++  postProcess(results) {
++    return results.map(r => {
++      // EZTV doesn't provide peer counts, explicitly set to null
++      r.peers = null;
++      r.provider = this.name;
++      return r;
++    });
++  }
++}
++
++module.exports = Eztv;
++
+diff --git a/node_modules/torrent-search-api/lib/providers/eztv.json b/node_modules/torrent-search-api/lib/providers/eztv.json
+deleted file mode 100644
+index f47fd2d..0000000
+--- a/node_modules/torrent-search-api/lib/providers/eztv.json
++++ /dev/null
+@@ -1,22 +0,0 @@
+-{
+-    "name": "Eztv",
+-    "baseUrl": "https://eztv.re",
+-    "searchUrl": "/search/{query}",
+-    "categories": {
+-       "All": ""
+-    },
+-    "defaultCategory": "All",
+-    "resultsPerPageCount": 50,
+-    "itemsSelector": "tr.forum_header_border",
+-    "itemSelectors": {
+-       "title": "a.epinfo@text",
+-       "link": "a.download_1@href",
+-       "magnet": "a.magnet@href",
+-       "time": "td.forum_thread_post:nth-child(5)@text",
+-       "seeds": "td.forum_thread_post_end | int",
+-       "size": "td.forum_thread_post:nth-child(4)@text",
+-       "desc": "a.epinfo@href"
+-    },
+-    "paginateSelector": "a:contains( next page)@href",
+-    "torrentDetailsSelector": ".section_thread_post@html"
+- }
+\ No newline at end of file
 diff --git a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json b/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
 index aa954ff..ee48ecc 100755
 --- a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
