@@ -138,6 +138,119 @@ index f35ce62..d310621 100644
 \ No newline at end of file
 +}
 \ No newline at end of file
+diff --git a/node_modules/torrent-search-api/lib/providers/rarbg.js b/node_modules/torrent-search-api/lib/providers/rarbg.js
+index df88f4a..2a1cfa7 100755
+--- a/node_modules/torrent-search-api/lib/providers/rarbg.js
++++ b/node_modules/torrent-search-api/lib/providers/rarbg.js
+@@ -1,86 +1,36 @@
+-const util = require('util');
+-const request = util.promisify(require('request'));
+ const TorrentProvider = require('../TorrentProvider');
+-const { humanizeSize } = require('../utils/helpers');
+ 
+ class Rarbg extends TorrentProvider {
+   constructor() {
+     super({
+       name: 'Rarbg',
+-      baseUrl: 'https://torrentapi.org',
+-      getTokenUrl:
+-        '/pubapi_v2.php?get_token=get_token&app_id=NodeTorrentSearchApi',
+-      searchUrl:
+-        '/pubapi_v2.php?app_id=NodeTorrentSearchApi&search_string={query}&category={cat}&mode=search&format=json_extended&sort=seeders&limit=100&token=',
++      baseUrl: 'https://rargb.to',
++      searchUrl: '/search/?search={query}',
+       categories: {
+-        All:
+-          '1;4;14;15;16;17;21;22;42;18;19;41;27;28;29;30;31;32;40;23;24;25;26;33;34;43;44;45;46;47;48;49;50;51;52',
+-        Movies: '14;17;42;44;45;46;47;48;50;51;52',
+-        XXX: '1;4',
+-        Games: '1;27;28;29;30;31;32;40',
+-        TV: '1;18;41;49',
+-        Music: '1;23;24;25;26',
+-        Apps: '1;33;34;43',
+-        Books: '35'
++        All: '',
++        Movies: '&category%5B%5D=14&category%5B%5D=48&category%5B%5D=17&category%5B%5D=44&category%5B%5D=45&category%5B%5D=47&category%5B%5D=50&category%5B%5D=51&category%5B%5D=42&category%5B%5D=46&category%5B%5D=52&category%5B%5D=54',
++        TV: '&category%5B%5D=18&category%5B%5D=41&category%5B%5D=49',
++        Music: '&category%5B%5D=23&category%5B%5D=24&category%5B%5D=25&category%5B%5D=26',
++        Games: '&category%5B%5D=27&category%5B%5D=28&category%5B%5D=29&category%5B%5D=30&category%5B%5D=31&category%5B%5D=32&category%5B%5D=40&category%5B%5D=53',
++        Apps: '&category%5B%5D=33&category%5B%5D=34&category%5B%5D=43',
++        XXX: '&category%5B%5D=4'
+       },
+       defaultCategory: 'All',
+-      resultsPerPageCount: 100
++      resultsPerPageCount: 25,
++      itemsSelector: 'table.lista2t tr.lista2',
++      itemSelectors: {
++        title: 'td:nth-child(2) a[href*="/torrent/"]',
++        time: 'td:nth-child(4)',
++        size: 'td:nth-child(5)',
++        seeds: 'td:nth-child(6) | int',
++        peers: 'td:nth-child(7) | int',
++        desc: 'td:nth-child(2) a[href*="/torrent/"]@href'
++      },
++      paginateSelector: 'a[href*="/search/"][href*="page="]@href | last',
++      magnetSelector: 'a[href^="magnet:"]@href',
++      enableCloudFareBypass: false
+     });
+   }
+-
+-  search(query, category) {
+-    return this.ensureLogin()
+-      .then(() => {
+-        const url = this.getUrl(category, query);
+-        if (url === null) {
+-          return Promise.resolve([]);
+-        }
+-        return request({ url, headers: { 'User-Agent': 'curl/7.37.0' } });
+-      })
+-      .then(response => {
+-        const results = JSON.parse(response.body).torrent_results;
+-        return (
+-          results &&
+-          results.map(r => ({
+-            provider: this.name,
+-            title: r.title,
+-            time: r.pubdate,
+-            seeds: r.seeders,
+-            peers: r.leechers,
+-            size: humanizeSize(r.size, r.name),
+-            magnet: r.download,
+-            desc: r.info_page
+-          }))
+-        );
+-      });
+-  }
+-
+-  getTorrentDetails(torrent) {
+-    throw new Error('Not implemented');
+-  }
+-
+-  ensureLogin() {
+-    if (!this.lastLoginTime || Date.now() - this.lastLoginTime > 840000) {
+-      return request({
+-        url: this.baseUrl + this.getTokenUrl,
+-        headers: { 'User-Agent': 'curl/7.37.0' }
+-      }).then(r => {
+-        //wait 2 seconds to avoid doing more than 1 req per 2 secs
+-        const waitTill = new Date(new Date().getTime() + 2 * 1000);
+-        while (waitTill > new Date()) {}
+-
+-        this.lastLoginTime = Date.now();
+-        this.searchUrl =
+-          this.searchUrl.substr(0, this.searchUrl.lastIndexOf('=') + 1) +
+-          JSON.parse(r.body).token;
+-      });
+-    }
+-    return Promise.resolve();
+-  }
+-
+-  downloadTorrent() {
+-    throw new Error('Not implemented');
+-  }
+ }
+ 
+ module.exports = Rarbg;
 diff --git a/node_modules/torrent-search-api/lib/providers/torrent9.js b/node_modules/torrent-search-api/lib/providers/torrent9.js
 index 0aa06c9..e20f7dd 100644
 --- a/node_modules/torrent-search-api/lib/providers/torrent9.js
