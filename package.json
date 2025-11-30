@@ -31,18 +31,17 @@
     "dotenv": "^8.2.0",
     "imdb-api": "^4.0.3",
     "inquirer-autocomplete-standalone": "^0.8.1",
-    "patch-package": "^6.4.7",
     "play-on-apple-tv": "^1.1.1",
     "rarbg-api": "^1.1.4",
     "terminal-image": "^1.2.1",
-    "torrent-search-api": "^2.1.1",
+    "torrent-search-api": "^2.1.4",
     "transmission-promise": "^1.1.4",
     "webtorrent-cli": "^3.2.1",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.167",
-    "@types/torrent-search-api": "^2.0.0",
+    "@types/torrent-search-api": "^2.0.3",
     "@types/yargs": "^17.0.10",
     "@typescript-eslint/eslint-plugin": "^5.5.4",
     "@typescript-eslint/parser": "^5.5.4",
@@ -50,6 +49,7 @@
     "husky": "^4.3.0",
     "lint-staged": "^10.5.1",
     "lodash": "^4.17.20",
+    "patch-package": "^8.0.1",
     "prettier": "^2.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"

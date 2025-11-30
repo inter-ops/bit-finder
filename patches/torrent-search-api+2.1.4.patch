@@ -1,0 +1,236 @@
+diff --git a/node_modules/torrent-search-api/lib/providers/1337x.js b/node_modules/torrent-search-api/lib/providers/1337x.js
+index 9d50b64..b4860ae 100755
+--- a/node_modules/torrent-search-api/lib/providers/1337x.js
++++ b/node_modules/torrent-search-api/lib/providers/1337x.js
+@@ -6,15 +6,15 @@ class _1337x extends TorrentProvider {
+     super({
+       name: '1337x',
+       baseUrl: 'https://www.1337x.to',
+-      searchUrl: '/category-search/{query}/{cat}/1/',
++      searchUrl: '/sort-category-search/{query}/{cat}/{sort}/desc/1/', // https://1337x.to/sort-category-search/discography/Music/time/desc/1/
+       categories: {
+-        All: 'url:/search/{query}/1/',
++        All: 'url:/sort-search/{query}/{sort}/desc/1/', // https://www.1337x.to/sort-search/discography/time/desc/1/
+         Movies: 'Movies',
+         TV: 'TV',
+         Games: 'Games',
+         Music: 'Music',
+         Anime: 'Anime',
+-        Applications: 'Apps',
++        Apps: 'Apps',
+         Documentaries: 'Documentaries',
+         Xxx: 'XXX',
+         Other: 'Other',
+@@ -25,6 +25,7 @@ class _1337x extends TorrentProvider {
+       itemsSelector: 'tbody > tr',
+       itemSelectors: {
+         title: 'a:nth-child(2)',
++        category: 'a:nth-child(1) > i@class',
+         time: '.coll-date',
+         seeds: '.seeds | int',
+         peers: '.leeches | int',
+@@ -37,11 +38,11 @@ class _1337x extends TorrentProvider {
+     });
+   }
+ 
+-  downloadTorrent(torrent,path) {
++  downloadTorrent(torrent, path) {
+     return this.xray(torrent.desc, '.infohash-box span').then(hash =>
+       super.downloadTorrent({
+         link: format('http://itorrents.org/torrent/{0}.torrent', hash)
+-      },path)
++      }, path)
+     );
+   }
+ }
+diff --git a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json b/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
+index aa954ff..30d3017 100755
+--- a/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
++++ b/node_modules/torrent-search-api/lib/providers/kickasstorrents.json
+@@ -1,29 +1,29 @@
+ {
+-    "name": "KickassTorrents",
+-    "baseUrl": "https://katcr.co",
+-    "searchUrl": "/katsearch/page/1/{query}",
+-    "categories": {
+-       "All": "",
+-       "Movies": "url:/category/movies/page/1",
+-       "TV": "url:/category/tv/page/1",
+-       "Music": "url:/category/music/page/1",
+-       "Games": "url:/category/games/page/1",
+-       "Books": "url:/category/books/page/1",
+-       "Applications": "url:/category/applications/page/1",
+-       "Anime": "url:/category/anime/page/1"
+-    },
+-    "defaultCategory": "All",
+-    "resultsPerPageCount": 25,
+-    "itemsSelector": "tbody tr",
+-    "itemSelectors": {
+-      "title": ".torrents_table__torrent_title@text | trim",
++   "name": "KickassTorrents",
++   "baseUrl": "kickasstorrents.cr",
++   "searchUrl": "/usearch/{query}",
++   "categories": {
++      "All": "",
++      "Movies": "url:{query}/category/movies/1",
++      "TV": "url:/category/tv/",
++      "Music": "url:/category/music/1",
++      "Games": "url:/category/games/1",
++      "Books": "url:/category/books/1",
++      "Applications": "url:/category/applications/1",
++      "Anime": "url:/category/anime/1"
++   },
++   "defaultCategory": "All",
++   "resultsPerPageCount": 25,
++   "itemsSelector": ".data tbody tr.odd",
++   "itemSelectors": {
++      "title": ".torrentname@text | trim",
+       "time": "td[data-title=\"Age\"]",
+       "seeds": "td[data-title=\"Seed\"] | int",
+       "peers": "td[data-title=\"Leech\"] | int",
+       "size": "td[data-title=\"Size\"]",
+       "link": "a[title=\"Download torrent file\"]@href",
+       "desc": ".torrents_table__torrent_title@href"
+-    },
+-    "paginateSelector": "a:contains(Next)@href",
+-    "torrentDetailsSelector": ".col@html"
+- }
+\ No newline at end of file
++   },
++   "paginateSelector": "a:contains(Next)@href",
++   "torrentDetailsSelector": ".col@html"
++}
+\ No newline at end of file
+diff --git a/node_modules/torrent-search-api/lib/providers/limetorrents.json b/node_modules/torrent-search-api/lib/providers/limetorrents.json
+index f35ce62..d310621 100644
+--- a/node_modules/torrent-search-api/lib/providers/limetorrents.json
++++ b/node_modules/torrent-search-api/lib/providers/limetorrents.json
+@@ -1,6 +1,6 @@
+ {
+     "name": "Limetorrents",
+-    "baseUrl": "https://www.limetorrents.info",
++    "baseUrl": "https://www.limetorrents.lol",
+     "enableCloudFareBypass": true,
+     "searchUrl": "/search/{cat}/{query}/seeds/1/",
+     "categories": {
+@@ -16,14 +16,14 @@
+     "resultsPerPageCount": 40,
+     "itemsSelector": ".table2 tr",
+     "itemSelectors": {
+-       "title": ".tt-name > a:nth-child(2)@text",
+-       "link": "a.csprite_dl14@href",
+-       "seeds": ".tdseed | int",
+-       "peers": ".tdleech | int",
+-       "time": "td.tdnormal:nth-child(2)@text  | match:\"(.+?) -\"",
+-       "size": "td.tdnormal:nth-child(3)@text",
+-       "desc": ".tt-name > a:nth-child(2)@href"
++        "title": ".tt-name > a:nth-child(2)@text",
++        "link": "a.csprite_dl14@href",
++        "seeds": ".tdseed | int",
++        "peers": ".tdleech | int",
++        "time": "td.tdnormal:nth-child(2)@text  | match:\"(.+?) -\"",
++        "size": "td.tdnormal:nth-child(3)@text",
++        "desc": ".tt-name > a:nth-child(2)@href"
+     },
+     "paginateSelector": "a:contains(Next page)@href",
+     "torrentDetailsSelector": "#content@html"
+- }
+\ No newline at end of file
++}
+\ No newline at end of file
+diff --git a/node_modules/torrent-search-api/lib/providers/torrent9.js b/node_modules/torrent-search-api/lib/providers/torrent9.js
+index 0aa06c9..e20f7dd 100644
+--- a/node_modules/torrent-search-api/lib/providers/torrent9.js
++++ b/node_modules/torrent-search-api/lib/providers/torrent9.js
+@@ -4,16 +4,17 @@ class Torrent9 extends TorrentProvider {
+   constructor() {
+     super({
+       name: 'Torrent9',
+-      baseUrl: 'https://www.torrent9.ninja',
++      baseUrl: 'https://torrent9.to/',
+       enableCloudFareBypass: true,
+-      searchUrl: '/recherche/{query}',
++      searchUrl: '/search_torrent/{query}',
+       categories: {
+         All: '',
+-        Movies: 'url:/torrents/films',
+-        TV: 'url:/torrents/series',
+-        Music: 'url:/torrents/musique',
+-        Apps: 'url:/torrents/logiciels',
+-        Books: 'url:/torrents/ebook',
++        Movies: 'url:/search_torrent/films/{query}.html',
++        TV: 'url:/search_torrent/series/{query}.html',
++        Music: 'url:/search_torrent/musique/{query}.html',
++        Apps: 'url:/search_torrent/logiciels/{query}.html',
++        Books: 'url:/search_torrent/ebook/{query}.html',
++        Games: 'url:/search_torrent/jeux-pc/{query}.html',
+         Top100: 'url:/top'
+       },
+       defaultCategory: 'All',
+@@ -21,10 +22,12 @@ class Torrent9 extends TorrentProvider {
+       itemsSelector: 'table tr',
+       itemSelectors: {
+         title: 'a',
++        time: 'td:nth-child(2)',
+         seeds: '.seed_ok | int',
+         peers: 'td:nth-child(4) | int',
+-        size: 'td:nth-child(2)',
+-        desc: 'a@href | replace:t//,t/'
++        size: 'td:nth-child(3)',
++        desc: 'a@href | replace:t//,t/',
++        category: 'i@class'
+       },
+       paginateSelector: 'a:contains(Suivant ►)@href',
+       torrentDetailsSelector: '.movie-detail > .row:nth-child(1)@html'
+diff --git a/node_modules/torrent-search-api/lib/providers/torrentz2.json b/node_modules/torrent-search-api/lib/providers/torrentz2.json
+index d2a0656..3c88a42 100755
+--- a/node_modules/torrent-search-api/lib/providers/torrentz2.json
++++ b/node_modules/torrent-search-api/lib/providers/torrentz2.json
+@@ -1,24 +1,24 @@
+ {
+-  "name": "Torrentz2",
+-  "baseUrl": "https://torrentz2.eu",
+-  "searchUrl": "/?f={query}",
+-  "categories": {
+-     "All": ""
+-  },
+-  "defaultCategory": "All",
+-  "resultsPerPageCount": 50,
+-  "itemsSelector": "div.results dl",
+-  "itemSelectors": {
+-     "title": "a",
+-     "hash": "a@href | substr:21,",
+-     "time": "span:nth-child(2)",
+-     "size": "span:nth-child(3)",
+-     "seeds": "span:nth-child(5) | int",
+-     "peers": "span:nth-child(4) | int",
+-     "magnet": "a@href | substr:21, | format:magnet:?xt=urn:btih:{0}",
+-     "link": "a@href | substr:21, | format:http://itorrents.org/torrent/{0}.torrent"
+-  },
+-  "paginateSelector": "a:contains(»)@href",
+-  "torrentDetailsSelector": "td[class*=\"frame\"]:nth-child(1)@html",
+-  "enableCloudFareBypass": true
++   "name": "Torrentz2",
++   "baseUrl": "https://torrentz2.nz",
++   "searchUrl": "/search?q={query}",
++   "categories": {
++      "All": ""
++   },
++   "defaultCategory": "All",
++   "resultsPerPageCount": 50,
++   "itemsSelector": "div.results dl",
++   "itemSelectors": {
++      "title": "a",
++      "hash": "a@href | substr:21,",
++      "time": "span:nth-child(2)",
++      "size": "span:nth-child(3)",
++      "seeds": "span:nth-child(5) | int",
++      "peers": "span:nth-child(4) | int",
++      "magnet": "a@href | substr:21, | format:magnet:?xt=urn:btih:{0}",
++      "link": "a@href | substr:21, | format:http://itorrents.org/torrent/{0}.torrent"
++   },
++   "paginateSelector": "a:contains(»)@href",
++   "torrentDetailsSelector": "td[class*=\"frame\"]:nth-child(1)@html",
++   "enableCloudFareBypass": true
+ }
+\ No newline at end of file
