@@ -248,7 +248,7 @@ export function App() {
       <header class="header">
         <div class="container">
           <div class="header-row">
-            <h1>bit-finder</h1>
+            <h1>Torrent Search</h1>
             <nav class="tabs">
               <button 
                 class={`tab ${activeTab === 'search' ? 'active' : ''}`}
