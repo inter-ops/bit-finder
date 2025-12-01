@@ -1,0 +1,274 @@
+.downloads-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.downloads-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.downloads-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #1f2937;
+}
+
+.downloads-stats {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.downloads-loading,
+.downloads-error {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+.downloads-error {
+  color: #ef4444;
+  background: #fee2e2;
+  border-radius: 8px;
+}
+
+.downloads-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.downloads-empty p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.downloads-empty-hint {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.downloads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Download Card */
+.download-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+
+.download-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.download-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.download-title {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.download-status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.download-status-badge[data-status="downloading"] {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.download-status-badge[data-status="seeding"] {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.download-status-badge[data-status="stopped"] {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Progress Bar */
+.download-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.download-progress-bar {
+  flex: 1;
+  height: 24px;
+  background: #f3f4f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.download-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 999px;
+}
+
+.download-progress-fill[data-status="downloading"] {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.download-progress-fill[data-status="seeding"] {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.download-progress-fill[data-status="stopped"] {
+  background: #9ca3af;
+}
+
+.download-progress-text {
+  min-width: 50px;
+  text-align: right;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+/* Stats */
+.download-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.download-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1rem;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.stat-download {
+  color: #10b981;
+}
+
+.stat-upload {
+  color: #ef4444;
+}
+
+/* Details */
+.download-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.download-detail {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.detail-value {
+  font-size: 0.875rem;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+/* Actions */
+.download-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-remove {
+  background: white;
+  color: #dc2626;
+  border: 2px solid #dc2626;
+}
+
+.btn-remove:hover {
+  background: #fef2f2;
+}
+
+.btn-delete {
+  background: #dc2626;
+  color: white;
+  border: 2px solid #dc2626;
+}
+
+.btn-delete:hover {
+  background: #b91c1c;
+  border-color: #991b1b;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .downloads-page {
+    padding: 1rem;
+  }
+
+  .downloads-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .download-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .download-details {
+    grid-template-columns: 1fr;
+  }
+
+  .download-actions {
+    flex-direction: column;
+  }
+
+  .download-actions .btn {
+    width: 100%;
+  }
+}

@@ -47,6 +47,34 @@ export const add = async (magnet: string) => {
   return res;
 };
 
+export const getTorrents = async () => {
+  if (!transmissionClient) throw new Error("No transmission config provided");
+
+  const res = await transmissionClient.get();
+  return res.torrents || [];
+};
+
+export const pauseTorrent = async (id: number) => {
+  if (!transmissionClient) throw new Error("No transmission config provided");
+
+  const res = await transmissionClient.stop(id);
+  return res;
+};
+
+export const resumeTorrent = async (id: number) => {
+  if (!transmissionClient) throw new Error("No transmission config provided");
+
+  const res = await transmissionClient.start(id);
+  return res;
+};
+
+export const removeTorrent = async (id: number, deleteData = false) => {
+  if (!transmissionClient) throw new Error("No transmission config provided");
+
+  const res = await transmissionClient.remove(id, deleteData);
+  return res;
+};
+
 interface FormatOptions {
   includeIndex?: boolean;
 }

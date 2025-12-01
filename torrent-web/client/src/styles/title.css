@@ -1,0 +1,44 @@
+/* Title row styling */
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.torrent-title {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.torrent-title.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.torrent-title.clickable:hover {
+  color: #4a9eff;
+}
+
+.expand-icon {
+  font-size: 0.875rem;
+  color: #888;
+  margin-left: 0.5rem;
+}
+
+.source-link-inline {
+  font-size: 1.25rem;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  margin-top: 0.125rem;
+}
+
+.source-link-inline:hover {
+  transform: scale(1.2);
+}

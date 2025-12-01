@@ -1,0 +1,16 @@
+{
+  "name": "torrent-web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch server/index.ts",
+    "build": "cd client && bun run build",
+    "preview": "cd client && bun run preview"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
