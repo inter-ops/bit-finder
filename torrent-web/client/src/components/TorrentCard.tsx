@@ -1,12 +1,25 @@
 import { Torrent } from "../types";
 import { formatRelativeTime } from "../utils/timeFormat";
 
+interface TorrentDownloadState {
+  isDownloading: boolean;
+  isComplete: boolean;
+  isPaused: boolean;
+  progress: number;
+  infoHash?: string;
+}
+
 interface TorrentCardProps {
   torrent: Torrent;
   onGetMagnet: () => void;
   onDownload: () => void;
   onBadgeClick: (type: string, value: string) => void;
-  isDownloading?: boolean;
+  downloadState?: TorrentDownloadState;
+  onStream?: () => void;
+  streamState?: 'ready' | 'waiting' | 'unavailable';
+  onPause?: () => void;
+  onResume?: () => void;
+  onViewInDownloads?: () => void;
 }
 
 export function TorrentCard({
@@ -14,7 +27,12 @@ export function TorrentCard({
   onGetMagnet,
   onDownload,
   onBadgeClick,
-  isDownloading = false
+  downloadState = { isDownloading: false, isComplete: false, isPaused: false, progress: 0 },
+  onStream,
+  streamState = 'unavailable',
+  onPause,
+  onResume,
+  onViewInDownloads
 }: TorrentCardProps) {
   const { title, seeds, peers, size, provider, link, metadata, category } = torrent;
 
@@ -131,14 +149,70 @@ export function TorrentCard({
           <button class="btn btn-secondary" onClick={onGetMagnet}>
             Copy Magnet
           </button>
-          <button
-            class={`btn ${isDownloading ? "btn-downloading" : "btn-primary"}`}
-            onClick={onDownload}
-          >
-            {isDownloading ? "↓ Downloading..." : "Download"}
-          </button>
+          
+          {/* Download or View in Downloads button */}
+          {(downloadState.isDownloading || downloadState.isComplete || downloadState.isPaused || downloadState.infoHash) ? (
+            <button 
+              class="btn btn-view-downloads" 
+              onClick={onViewInDownloads}
+            >
+              View in Downloads
+            </button>
+          ) : (
+            <button class="btn btn-primary" onClick={onDownload}>
+              Download
+            </button>
+          )}
+          
+          {/* Stream button - only when ready */}
+          {streamState === 'ready' && (
+            <button class="btn btn-stream" onClick={onStream}>
+              ▶ Stream
+            </button>
+          )}
         </div>
-        {torrent.time &&
+        
+        {/* Download progress indicator on the right */}
+        {downloadState.isDownloading && (
+          <div class="torrent-progress-indicator">
+            <div class="progress-bar-mini">
+              <div 
+                class="progress-bar-mini-fill" 
+                style={{ width: `${downloadState.progress}%` }}
+              />
+            </div>
+            <span class="progress-text">{downloadState.progress}%</span>
+            <button class="btn-pause-mini" onClick={onPause} title="Pause download">
+              ⏸
+            </button>
+          </div>
+        )}
+        
+        {/* Paused indicator */}
+        {downloadState.isPaused && !downloadState.isComplete && (
+          <div class="torrent-progress-indicator paused">
+            <div class="progress-bar-mini">
+              <div 
+                class="progress-bar-mini-fill paused" 
+                style={{ width: `${downloadState.progress}%` }}
+              />
+            </div>
+            <span class="progress-text">{downloadState.progress}%</span>
+            <button class="btn-resume-mini" onClick={onResume} title="Resume download">
+              ▶
+            </button>
+          </div>
+        )}
+        
+        {/* Completed indicator */}
+        {downloadState.isComplete && (
+          <div class="torrent-complete-indicator">
+            <span class="complete-badge">✓ Complete</span>
+          </div>
+        )}
+        
+        {/* Time info - only show when not downloading/complete */}
+        {!downloadState.isDownloading && !downloadState.isComplete && torrent.time &&
           (() => {
             const { relative, full } = formatRelativeTime(torrent.time);
             return (

@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from "preact/hooks";
+import { useState, useEffect, useMemo, useRef } from "preact/hooks";
 import { TMDBResult, MovieDetail, TVDetail, SeasonDetail } from "../pages/Browse";
 import { TorrentList } from "./TorrentList";
 import { Torrent, Filters } from "../types";
+import { WebTorrentInfo } from "../pages/Downloads";
 
 interface ContentDetailProps {
   content: TMDBResult;
   onBack: () => void;
   onNotify: (message: string, type: "success" | "error") => void;
-  onNavigateToDownloads?: () => void;
+  onNavigateToDownloads?: (infoHash?: string) => void;
 }
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
@@ -54,6 +55,21 @@ export function ContentDetail({
   const [omdbRatings, setOmdbRatings] = useState<OmdbRatings | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [downloadingTorrents, setDownloadingTorrents] = useState<Set<string>>(new Set());
+  const [activeTorrents, setActiveTorrents] = useState<WebTorrentInfo[]>([]);
+  // Map of torrent raw ID -> infoHash (populated when we download)
+  const [torrentInfoHashMap, setTorrentInfoHashMap] = useState<Record<string, string>>(() => {
+    // Load from localStorage on init
+    try {
+      const saved = localStorage.getItem('torrent-infohash-map');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [streamingTorrent, setStreamingTorrent] = useState<{infoHash: string; fileIndex?: number} | null>(null);
+  const [streamReady, setStreamReady] = useState<Record<string, boolean>>({});
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [savedPlaybackTime, setSavedPlaybackTime] = useState<Record<string, number>>({});
 
   const isTV = content.media_type === "tv";
   const title = content.title || content.name || "Unknown";
@@ -61,6 +77,47 @@ export function ContentDetail({
     content.release_date || content.first_air_date
       ? new Date((content.release_date || content.first_air_date)!).getFullYear()
       : null;
+
+  // Fetch active torrents to check downloading/streaming state
+  useEffect(() => {
+    const fetchActiveTorrents = async () => {
+      try {
+        const response = await fetch("/api/torrents");
+        const data = await response.json();
+        if (data.torrents) {
+          setActiveTorrents(data.torrents);
+          // Check stream readiness for active torrents
+          const readyMap: Record<string, boolean> = {};
+          for (const torrent of data.torrents) {
+            // Stream is ready if we have at least 1% downloaded and there's a video file
+            const hasVideoFile = torrent.files?.some((f: any) => 
+              ['.mp4', '.mkv', '.avi', '.webm', '.mov', '.m4v'].some(ext => 
+                f.name.toLowerCase().endsWith(ext)
+              )
+            );
+            readyMap[torrent.infoHash] = hasVideoFile && torrent.progress > 0.01;
+          }
+          setStreamReady(readyMap);
+        }
+      } catch (error) {
+        console.error("Failed to fetch active torrents:", error);
+      }
+    };
+
+    fetchActiveTorrents();
+    const interval = setInterval(fetchActiveTorrents, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Load saved playback times from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('torrent-playback-times');
+    if (saved) {
+      try {
+        setSavedPlaybackTime(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
 
   // Fetch details on mount and auto-search torrents for movies
   useEffect(() => {
@@ -191,6 +248,88 @@ export function ContentDetail({
     }
   };
 
+  // Check if a torrent is already downloading - by info hash or title
+  const isAlreadyDownloading = (torrent: Torrent): WebTorrentInfo | undefined => {
+    const torrentId = torrent.raw?.id || torrent.title;
+    const searchTitle = torrent.title;
+    
+    // First check if we have a stored info hash mapping for this torrent
+    const storedInfoHash = torrentInfoHashMap[torrentId];
+    if (storedInfoHash) {
+      const match = activeTorrents.find(t => t.infoHash === storedInfoHash);
+      if (match) return match;
+    }
+    
+    // Fallback: title matching
+    // - Exact match, OR
+    // - Search title is contained in download name (e.g., YTS adds "[5.1] [YTS.MX]" suffix)
+    return activeTorrents.find(t => {
+      const downloadName = t.name || '';
+      return downloadName === searchTitle || downloadName.startsWith(searchTitle);
+    });
+  };
+
+  // Get the download state for a torrent
+  const getTorrentDownloadState = (torrent: Torrent): { 
+    isDownloading: boolean; 
+    isComplete: boolean;
+    isPaused: boolean;
+    progress: number;
+    infoHash?: string;
+  } => {
+    const torrentId = torrent.raw?.id || torrent.title;
+    const activeTorrent = isAlreadyDownloading(torrent);
+    
+    if (activeTorrent) {
+      return {
+        isDownloading: !activeTorrent.done && !activeTorrent.paused,
+        isComplete: activeTorrent.done,
+        isPaused: activeTorrent.paused && !activeTorrent.done,
+        progress: Math.round(activeTorrent.progress * 100),
+        infoHash: activeTorrent.infoHash
+      };
+    }
+    
+    // Just clicked in this session but not yet in active torrents
+    if (downloadingTorrents.has(torrentId)) {
+      return { isDownloading: true, isComplete: false, isPaused: false, progress: 0 };
+    }
+    
+    return { isDownloading: false, isComplete: false, isPaused: false, progress: 0 };
+  };
+
+  // Check if a torrent is downloading (either clicked in this session or already in active downloads)
+  const isTorrentDownloading = (torrent: Torrent): boolean => {
+    const state = getTorrentDownloadState(torrent);
+    return state.isDownloading || state.isComplete;
+  };
+
+  // Pause a downloading torrent
+  const handlePauseTorrent = async (torrent: Torrent) => {
+    const state = getTorrentDownloadState(torrent);
+    if (state.infoHash) {
+      try {
+        await fetch(`/api/torrents/${state.infoHash}/pause`, { method: 'POST' });
+        onNotify("Torrent paused", "success");
+      } catch (error) {
+        onNotify("Failed to pause torrent", "error");
+      }
+    }
+  };
+
+  // Resume a paused torrent
+  const handleResumeTorrent = async (torrent: Torrent) => {
+    const state = getTorrentDownloadState(torrent);
+    if (state.infoHash) {
+      try {
+        await fetch(`/api/torrents/${state.infoHash}/resume`, { method: 'POST' });
+        onNotify("Torrent resumed", "success");
+      } catch (error) {
+        onNotify("Failed to resume torrent", "error");
+      }
+    }
+  };
+
   const handleDownload = async (torrent: Torrent) => {
     // Generate a unique ID for this torrent
     const torrentId = torrent.raw?.id || torrent.title;
@@ -222,13 +361,79 @@ export function ContentDetail({
       if (downloadResponse.ok) {
         // Mark as downloading
         setDownloadingTorrents((prev) => new Set(prev).add(torrentId));
-        onNotify("Torrent added! Click again to view downloads", "success");
+        
+        // Store the info hash mapping for robust matching (using infoHash from server response)
+        const infoHash = downloadData.torrent?.infoHash;
+        if (infoHash) {
+          const newMap = { ...torrentInfoHashMap, [torrentId]: infoHash };
+          setTorrentInfoHashMap(newMap);
+          localStorage.setItem('torrent-infohash-map', JSON.stringify(newMap));
+        }
+        
+        onNotify("Torrent added!", "success");
       } else {
         onNotify(downloadData.error || "Failed to add torrent", "error");
       }
     } catch (error) {
       onNotify("Failed to download torrent", "error");
     }
+  };
+
+  const handleStream = (torrent: Torrent) => {
+    const activeTorrent = isAlreadyDownloading(torrent);
+    if (activeTorrent && streamReady[activeTorrent.infoHash]) {
+      // Find video file
+      const videoFiles = activeTorrent.files?.filter(f => 
+        ['.mp4', '.mkv', '.avi', '.webm', '.mov', '.m4v'].some(ext => 
+          f.name.toLowerCase().endsWith(ext)
+        )
+      ) || [];
+      
+      if (videoFiles.length > 0) {
+        setStreamingTorrent({ 
+          infoHash: activeTorrent.infoHash, 
+          fileIndex: videoFiles[0].index 
+        });
+      }
+    }
+  };
+
+  const handleCloseStream = (confirmed: boolean = false) => {
+    if (!confirmed && streamingTorrent) {
+      if (!window.confirm("Are you sure you want to close the video? Your playback position will be saved.")) {
+        return;
+      }
+    }
+    
+    // Save current playback time
+    if (videoRef.current && streamingTorrent) {
+      const newSaved = {
+        ...savedPlaybackTime,
+        [streamingTorrent.infoHash]: videoRef.current.currentTime
+      };
+      setSavedPlaybackTime(newSaved);
+      localStorage.setItem('torrent-playback-times', JSON.stringify(newSaved));
+    }
+    
+    setStreamingTorrent(null);
+  };
+
+  // Handle video loaded - restore playback position
+  const handleVideoLoaded = () => {
+    if (videoRef.current && streamingTorrent) {
+      const savedTime = savedPlaybackTime[streamingTorrent.infoHash];
+      if (savedTime && savedTime > 0) {
+        videoRef.current.currentTime = savedTime;
+      }
+    }
+  };
+
+  // Get stream state for a torrent
+  const getStreamState = (torrent: Torrent): 'ready' | 'waiting' | 'unavailable' => {
+    const activeTorrent = isAlreadyDownloading(torrent);
+    if (!activeTorrent) return 'unavailable';
+    if (streamReady[activeTorrent.infoHash]) return 'ready';
+    return 'waiting';
   };
 
   const handleBadgeClick = (type: string, value: string) => {
@@ -604,6 +809,13 @@ export function ContentDetail({
                 onDownload={handleDownload}
                 onBadgeClick={handleBadgeClick}
                 downloadingTorrents={downloadingTorrents}
+                onStream={handleStream}
+                getStreamState={getStreamState}
+                isTorrentDownloading={isTorrentDownloading}
+                getTorrentDownloadState={getTorrentDownloadState}
+                onPauseTorrent={handlePauseTorrent}
+                onResumeTorrent={handleResumeTorrent}
+                onNavigateToDownloads={onNavigateToDownloads}
               />
             </div>
           )}
@@ -624,6 +836,33 @@ export function ContentDetail({
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
+          </div>
+        </div>
+      )}
+
+      {/* Video Streaming Modal */}
+      {streamingTorrent && (
+        <div class="video-modal" onClick={() => handleCloseStream(false)}>
+          <div class="video-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button class="video-close" onClick={() => handleCloseStream(false)}>
+              ✕
+            </button>
+            <video 
+              ref={videoRef}
+              src={`/api/stream/${streamingTorrent.infoHash}${streamingTorrent.fileIndex !== undefined ? `?file=${streamingTorrent.fileIndex}` : ''}`}
+              controls 
+              autoPlay 
+              class="video-player"
+              onLoadedData={handleVideoLoaded}
+            >
+              Your browser does not support video playback.
+            </video>
+            <div class="video-info">
+              <span class="video-title">{title}</span>
+              <span class="video-progress">
+                Buffer: {Math.round((activeTorrents.find(t => t.infoHash === streamingTorrent.infoHash)?.progress || 0) * 100)}%
+              </span>
+            </div>
           </div>
         </div>
       )}

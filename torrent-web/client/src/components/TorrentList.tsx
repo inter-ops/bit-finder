@@ -1,6 +1,14 @@
 import { TorrentCard } from "./TorrentCard";
 import { Torrent } from "../types";
 
+interface TorrentDownloadState {
+  isDownloading: boolean;
+  isComplete: boolean;
+  isPaused: boolean;
+  progress: number;
+  infoHash?: string;
+}
+
 interface TorrentListProps {
   torrents: Torrent[];
   loading: boolean;
@@ -8,6 +16,13 @@ interface TorrentListProps {
   onDownload: (torrent: Torrent) => void;
   onBadgeClick?: (type: string, value: string) => void;
   downloadingTorrents?: Set<string>;
+  onStream?: (torrent: Torrent) => void;
+  getStreamState?: (torrent: Torrent) => 'ready' | 'waiting' | 'unavailable';
+  isTorrentDownloading?: (torrent: Torrent) => boolean;
+  getTorrentDownloadState?: (torrent: Torrent) => TorrentDownloadState;
+  onPauseTorrent?: (torrent: Torrent) => void;
+  onResumeTorrent?: (torrent: Torrent) => void;
+  onNavigateToDownloads?: (infoHash?: string) => void;
 }
 
 export function TorrentList({
@@ -16,7 +31,14 @@ export function TorrentList({
   onGetMagnet,
   onDownload,
   onBadgeClick,
-  downloadingTorrents
+  downloadingTorrents,
+  onStream,
+  getStreamState,
+  isTorrentDownloading,
+  getTorrentDownloadState,
+  onPauseTorrent,
+  onResumeTorrent,
+  onNavigateToDownloads
 }: TorrentListProps) {
   if (loading) {
     return (
@@ -39,7 +61,13 @@ export function TorrentList({
     <div class="torrent-list">
       {torrents.map((torrent, index) => {
         const torrentId = torrent.raw?.id || torrent.title;
-        const isDownloading = downloadingTorrents?.has(torrentId) || false;
+        const downloadState = getTorrentDownloadState?.(torrent) || { 
+          isDownloading: downloadingTorrents?.has(torrentId) || false, 
+          isComplete: false, 
+          isPaused: false,
+          progress: 0 
+        };
+        const streamState = getStreamState?.(torrent) || 'unavailable';
         return (
           <TorrentCard
             key={index}
@@ -47,7 +75,12 @@ export function TorrentList({
             onGetMagnet={() => onGetMagnet(torrent)}
             onDownload={() => onDownload(torrent)}
             onBadgeClick={onBadgeClick}
-            isDownloading={isDownloading}
+            downloadState={downloadState}
+            onStream={onStream ? () => onStream(torrent) : undefined}
+            streamState={streamState}
+            onPause={onPauseTorrent ? () => onPauseTorrent(torrent) : undefined}
+            onResume={onResumeTorrent ? () => onResumeTorrent(torrent) : undefined}
+            onViewInDownloads={onNavigateToDownloads ? () => onNavigateToDownloads(downloadState.infoHash) : undefined}
           />
         );
       })}

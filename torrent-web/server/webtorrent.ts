@@ -27,6 +27,7 @@ interface TorrentState {
   magnetURI: string;
   paused: boolean;
   addedAt: number;
+  done: boolean;
 }
 
 interface PersistedState {
@@ -36,12 +37,15 @@ interface PersistedState {
 function loadState(): PersistedState {
   try {
     if (existsSync(STATE_FILE)) {
+      console.log("Loading existing WebTorrent state from:", STATE_FILE);
       const data = readFileSync(STATE_FILE, "utf-8");
       return JSON.parse(data);
     }
   } catch (error) {
     console.error("Failed to load WebTorrent state:", error);
   }
+
+  console.log("No WebTorrent state file found, creating new state");
   return { torrents: {} };
 }
 
@@ -53,7 +57,8 @@ function saveState() {
       state.torrents[torrent.infoHash] = {
         magnetURI: torrent.magnetURI,
         paused: torrent.paused,
-        addedAt: Date.now()
+        addedAt: Date.now(),
+        done: torrent.done
       };
     });
 
@@ -72,7 +77,12 @@ async function restoreTorrents() {
 
   for (const torrentState of magnetURIs) {
     try {
-      await addTorrent(torrentState.magnetURI, { paused: torrentState.paused });
+      // If torrent was complete, pause it after adding to prevent re-verification/seeding
+      const shouldPause = torrentState.paused || torrentState.done;
+      await addTorrent(torrentState.magnetURI, {
+        paused: shouldPause,
+        wasComplete: torrentState.done
+      });
     } catch (error) {
       console.error(`Failed to restore torrent:`, error);
     }
@@ -143,16 +153,18 @@ function formatTorrentInfo(torrent: WebTorrent.Torrent): TorrentInfo {
 // Add a torrent
 export async function addTorrent(
   magnetURI: string,
-  options: { paused?: boolean } = {}
+  options: { paused?: boolean; wasComplete?: boolean } = {}
 ): Promise<TorrentInfo> {
-  return new Promise((resolve, reject) => {
-    // Check if already added
-    const existing = client.get(magnetURI);
-    if (existing) {
-      resolve(formatTorrentInfo(existing));
-      return;
-    }
+  console.log("Adding torrent");
 
+  // Check if already added
+  const existing = await client.get(magnetURI);
+  if (existing) {
+    console.log("Torrent already added:", existing);
+    return formatTorrentInfo(existing);
+  }
+
+  return new Promise((resolve, reject) => {
     const torrent = client.add(magnetURI, {
       path: DOWNLOAD_PATH,
       // Enable sequential download for streaming
@@ -162,9 +174,12 @@ export async function addTorrent(
     torrent.on("ready", () => {
       console.log(`Torrent ready: ${torrent.name}`);
 
-      // If should be paused, pause it
-      if (options.paused) {
+      // If should be paused (either explicitly or was complete), pause it
+      if (options.paused || options.wasComplete) {
         torrent.pause();
+        if (options.wasComplete) {
+          console.log(`Torrent was complete, keeping paused: ${torrent.name}`);
+        }
       }
 
       // Prioritize first and last pieces for streaming
@@ -178,13 +193,17 @@ export async function addTorrent(
       resolve(formatTorrentInfo(torrent));
     });
 
-    torrent.on("error", (err) => {
-      console.error(`Torrent error: ${err.message}`);
+    torrent.on("error", (err: Error | string) => {
+      const message = typeof err === "string" ? err : err.message;
+      console.error(`Torrent error: ${message}`);
       reject(err);
     });
 
     torrent.on("done", () => {
       console.log(`Torrent complete: ${torrent.name}`);
+      // Auto-pause to stop uploading when download is complete
+      torrent.pause();
+      console.log(`Torrent auto-paused after completion: ${torrent.name}`);
       saveState();
     });
 
@@ -240,9 +259,10 @@ export function removeTorrent(infoHash: string, deleteFiles = false): Promise<bo
   return new Promise((resolve) => {
     const torrent = client.torrents.find((t) => t.infoHash === infoHash);
     if (torrent) {
-      client.remove(torrent, { destroyStore: deleteFiles }, (err) => {
+      client.remove(torrent, { destroyStore: deleteFiles }, (err: Error | string | undefined) => {
         if (err) {
-          console.error(`Failed to remove torrent: ${err.message}`);
+          const message = typeof err === "string" ? err : err.message;
+          console.error(`Failed to remove torrent: ${message}`);
           resolve(false);
         } else {
           saveState();

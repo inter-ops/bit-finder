@@ -357,11 +357,173 @@ body {
   color: var(--accent-purple);
   border: 2px solid var(--accent-purple);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-downloading:hover {
   background: rgba(139, 92, 246, 0.2);
   box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+.btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.btn-spinner-small {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+.btn-stream {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  border: none !important;
+  padding: 5px 12px;
+  font-weight: 600;
+}
+
+.btn-stream:hover {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  transform: translateY(-1px);
+}
+
+.btn-stream-waiting {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple) !important;
+  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.btn-stream-waiting:disabled {
+  cursor: not-allowed;
+}
+
+.btn-downloaded {
+  background: rgba(24, 190, 148, 0.1);
+  color: var(--accent-green);
+  border: 2px solid var(--accent-green) !important;
+  cursor: default;
+  opacity: 0.8;
+}
+
+.btn-downloaded:disabled {
+  cursor: default;
+}
+
+.btn-view-downloads {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple) !important;
+}
+
+.btn-view-downloads:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+/* Progress indicator on torrent row */
+.torrent-progress-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+}
+
+.progress-bar-mini {
+  width: 80px;
+  height: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  font-family: var(--font-mono);
+  min-width: 32px;
+}
+
+.btn-pause-mini,
+.btn-resume-mini {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  border-radius: 3px;
+}
+
+.btn-pause-mini:hover,
+.btn-resume-mini:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.btn-resume-mini {
+  color: #10b981;
+}
+
+/* Paused state */
+.torrent-progress-indicator.paused {
+  background: rgba(107, 114, 128, 0.08);
+  border-color: rgba(107, 114, 128, 0.2);
+}
+
+.progress-bar-mini-fill.paused {
+  background: linear-gradient(90deg, #6b7280, #9ca3af);
+}
+
+.paused-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+/* Complete indicator */
+.torrent-complete-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.complete-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-green);
+  padding: 4px 8px;
+  background: rgba(24, 190, 148, 0.08);
+  border: 1px solid rgba(24, 190, 148, 0.2);
+  border-radius: 4px;
 }
 
 .btn-secondary {

@@ -32,6 +32,17 @@ export function App() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [highlightedTorrent, setHighlightedTorrent] = useState<string | null>(null);
+
+  // Handler to navigate to downloads with a highlighted torrent
+  const handleNavigateToDownloads = (infoHash?: string) => {
+    if (infoHash) {
+      setHighlightedTorrent(infoHash);
+      // Clear highlight after 5 seconds
+      setTimeout(() => setHighlightedTorrent(null), 5000);
+    }
+    setActiveTab("downloads");
+  };
 
   // Apply filters whenever torrents or filters change
   useEffect(() => {
@@ -281,7 +292,7 @@ export function App() {
       <main class="main">
         <div class="container">
           {activeTab === "browse" && (
-            <Browse onNavigateToDownloads={() => setActiveTab("downloads")} />
+            <Browse onNavigateToDownloads={handleNavigateToDownloads} />
           )}
           {activeTab === "search" && (
             <>
@@ -324,7 +335,7 @@ export function App() {
               )}
             </>
           )}
-          {activeTab === "downloads" && <Downloads />}
+          {activeTab === "downloads" && <Downloads highlightedInfoHash={highlightedTorrent} />}
         </div>
       </main>
     </div>

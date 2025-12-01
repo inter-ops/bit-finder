@@ -1,5 +1,5 @@
 import { h } from "preact";
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import DownloadCard from "../components/DownloadCard";
 import "../styles/downloads.css";
 
@@ -30,10 +30,30 @@ interface FileInfo {
   index: number;
 }
 
-export default function Downloads() {
+interface DownloadsProps {
+  highlightedInfoHash?: string | null;
+}
+
+function formatSpeed(bytesPerSecond: number): string {
+  if (bytesPerSecond === 0) return "0 B/s";
+  const k = 1024;
+  const sizes = ["B/s", "KB/s", "MB/s", "GB/s"];
+  const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
+  return `${(bytesPerSecond / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+export default function Downloads({ highlightedInfoHash }: DownloadsProps) {
   const [torrents, setTorrents] = useState<WebTorrentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const highlightedRef = useRef<HTMLDivElement>(null);
+  
+  // Scroll to highlighted torrent when it appears
+  useEffect(() => {
+    if (highlightedInfoHash && highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightedInfoHash, torrents]);
 
   const fetchTorrents = async () => {
     try {
@@ -126,12 +146,34 @@ export default function Downloads() {
     );
   }
 
+  // Calculate stats
+  const downloadingCount = torrents.filter(t => !t.done && !t.paused).length;
+  const completedCount = torrents.filter(t => t.done).length;
+  const totalDownloadSpeed = torrents.reduce((sum, t) => sum + t.downloadSpeed, 0);
+
   return (
     <div class="downloads-page">
       <div class="downloads-header">
         <h1>Downloads</h1>
         <div class="downloads-stats">
-          {torrents.length} active torrent{torrents.length !== 1 ? "s" : ""}
+          {downloadingCount > 0 && (
+            <span class="stat-downloading">
+              {downloadingCount} downloading
+            </span>
+          )}
+          {downloadingCount > 0 && completedCount > 0 && <span class="stat-sep">•</span>}
+          {completedCount > 0 && (
+            <span class="stat-completed">
+              {completedCount} completed
+            </span>
+          )}
+          {totalDownloadSpeed > 0 && (
+            <>
+              <span class="stat-sep">•</span>
+              <span class="stat-speed">↓ {formatSpeed(totalDownloadSpeed)}</span>
+            </>
+          )}
+          {torrents.length === 0 && <span>No torrents</span>}
         </div>
       </div>
 
@@ -142,16 +184,21 @@ export default function Downloads() {
         </div>
       ) : (
         <div class="downloads-list">
-          {torrents.map((torrent) => (
-            <DownloadCard
-              key={torrent.infoHash}
-              torrent={torrent}
-              onPause={() => handlePause(torrent.infoHash)}
-              onResume={() => handleResume(torrent.infoHash)}
-              onRemove={() => handleRemove(torrent.infoHash)}
-              onDelete={() => handleDelete(torrent.infoHash)}
-            />
-          ))}
+          {torrents.map((torrent) => {
+            const isHighlighted = highlightedInfoHash === torrent.infoHash;
+            return (
+              <div key={torrent.infoHash} ref={isHighlighted ? highlightedRef : undefined}>
+                <DownloadCard
+                  torrent={torrent}
+                  onPause={() => handlePause(torrent.infoHash)}
+                  onResume={() => handleResume(torrent.infoHash)}
+                  onRemove={() => handleRemove(torrent.infoHash)}
+                  onDelete={() => handleDelete(torrent.infoHash)}
+                  isHighlighted={isHighlighted}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

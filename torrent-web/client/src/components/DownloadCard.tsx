@@ -8,6 +8,7 @@ interface DownloadCardProps {
   onResume: () => void;
   onRemove: () => void;
   onDelete: () => void;
+  isHighlighted?: boolean;
 }
 
 function formatBytes(bytes: number): string {
@@ -45,7 +46,8 @@ export default function DownloadCard({
   onPause,
   onResume,
   onRemove,
-  onDelete
+  onDelete,
+  isHighlighted = false
 }: DownloadCardProps) {
   const [showPlayer, setShowPlayer] = useState(false);
   const [selectedFile, setSelectedFile] = useState<number | null>(null);
@@ -80,7 +82,7 @@ export default function DownloadCard({
       : `/api/stream/${torrent.infoHash}`;
 
   return (
-    <div class="download-card">
+    <div class={`download-card ${isHighlighted ? 'download-card-highlighted' : ''}`}>
       <div class="download-header">
         <div class="download-title">{torrent.name || "Loading..."}</div>
         <div

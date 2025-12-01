@@ -21,7 +21,30 @@
 
 .downloads-stats {
   color: #6b7280;
-  font-size: 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.downloads-stats .stat-downloading {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.downloads-stats .stat-completed {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.downloads-stats .stat-speed {
+  color: #10b981;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+}
+
+.downloads-stats .stat-sep {
+  color: #d1d5db;
 }
 
 .downloads-loading,
@@ -71,6 +94,21 @@
 
 .download-card:hover {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.download-card-highlighted {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 4px 12px rgba(139, 92, 246, 0.15);
+  animation: highlight-pulse 2s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 4px 12px rgba(139, 92, 246, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.3), 0 4px 16px rgba(139, 92, 246, 0.25);
+  }
 }
 
 .download-header {
