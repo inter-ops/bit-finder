@@ -386,29 +386,41 @@ body {
   display: inline-block;
 }
 
+/* Stream Button - Terminal/Code Style */
 .btn-stream {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: white;
-  border: none !important;
-  padding: 5px 12px;
-  font-weight: 600;
+  background: transparent;
+  color: #a78bfa;
+  border: 1px solid #7c3aed !important;
+  padding: 5px 14px;
+  font-weight: 500;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
 }
 
 .btn-stream:hover {
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  transform: translateY(-1px);
+  background: rgba(124, 58, 237, 0.15);
+  color: #c4b5fd;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
 }
 
 .btn-stream-waiting {
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--accent-purple);
-  border: 1px solid var(--accent-purple) !important;
-  padding: 5px 12px;
+  background: transparent;
+  color: #6b7280;
+  border: 1px dashed #4b5563 !important;
+  padding: 5px 14px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: not-allowed;
-  opacity: 0.8;
+  opacity: 0.7;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .btn-stream-waiting:disabled {

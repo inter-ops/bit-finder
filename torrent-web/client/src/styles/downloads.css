@@ -1,7 +1,9 @@
+/* Downloads Page - Programmer Style (Light Theme) */
 .downloads-page {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 }
 
 .downloads-header {
@@ -10,21 +12,24 @@
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 1px dashed #d1d5db;
 }
 
 .downloads-header h1 {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: #1f2937;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .downloads-stats {
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  font-family: inherit;
 }
 
 .downloads-stats .stat-downloading {
@@ -32,15 +37,26 @@
   font-weight: 500;
 }
 
+.downloads-stats .stat-downloading::before {
+  content: "↓ ";
+}
+
 .downloads-stats .stat-completed {
   color: #10b981;
   font-weight: 500;
 }
 
+.downloads-stats .stat-completed::before {
+  content: "✓ ";
+}
+
 .downloads-stats .stat-speed {
-  color: #10b981;
+  color: #f59e0b;
   font-weight: 600;
-  font-family: var(--font-mono, monospace);
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 3px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
 .downloads-stats .stat-sep {
@@ -52,13 +68,14 @@
   text-align: center;
   padding: 3rem;
   color: #6b7280;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
 }
 
 .downloads-error {
   color: #ef4444;
-  background: #fee2e2;
-  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: 4px;
 }
 
 .downloads-empty {
@@ -69,46 +86,56 @@
 
 .downloads-empty p {
   margin: 0.5rem 0;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
 }
 
 .downloads-empty-hint {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #9ca3af;
 }
 
 .downloads-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 /* Download Card */
 .download-card {
-  background: white;
+  background: #fafafa;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: box-shadow 0.2s;
+  border-radius: 4px;
+  padding: 1.25rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.download-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #d1d5db;
+  border-radius: 4px 0 0 4px;
 }
 
 .download-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.download-card:hover::before {
+  background: #10b981;
 }
 
 .download-card-highlighted {
   border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 4px 12px rgba(139, 92, 246, 0.15);
-  animation: highlight-pulse 2s ease-in-out;
 }
 
-@keyframes highlight-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2), 0 4px 12px rgba(139, 92, 246, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(139, 92, 246, 0.3), 0 4px 16px rgba(139, 92, 246, 0.25);
-  }
+.download-card-highlighted::before {
+  background: #8b5cf6;
 }
 
 .download-header {
@@ -121,33 +148,41 @@
 
 .download-title {
   flex: 1;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   color: #1f2937;
   word-break: break-word;
+  font-family: inherit;
 }
 
 .download-status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.875rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
   font-weight: 500;
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: inherit;
 }
 
 .download-status-badge[data-status="downloading"] {
-  background: #dbeafe;
-  color: #1e40af;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-.download-status-badge[data-status="seeding"] {
-  background: #d1fae5;
-  color: #065f46;
+.download-status-badge[data-status="seeding"],
+.download-status-badge[data-status="complete"] {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-.download-status-badge[data-status="stopped"] {
-  background: #f3f4f6;
+.download-status-badge[data-status="stopped"],
+.download-status-badge[data-status="paused"] {
+  background: rgba(107, 114, 128, 0.1);
   color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.2);
 }
 
 /* Progress Bar */
@@ -160,64 +195,85 @@
 
 .download-progress-bar {
   flex: 1;
-  height: 24px;
-  background: #f3f4f6;
-  border-radius: 999px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.download-progress-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.02) 3px,
+    rgba(0,0,0,0.02) 6px
+  );
 }
 
 .download-progress-fill {
   height: 100%;
   transition: width 0.3s ease;
-  border-radius: 999px;
+  border-radius: 0;
 }
 
 .download-progress-fill[data-status="downloading"] {
   background: linear-gradient(90deg, #3b82f6, #60a5fa);
 }
 
-.download-progress-fill[data-status="seeding"] {
+.download-progress-fill[data-status="seeding"],
+.download-progress-fill[data-status="complete"] {
   background: linear-gradient(90deg, #10b981, #34d399);
 }
 
-.download-progress-fill[data-status="stopped"] {
+.download-progress-fill[data-status="stopped"],
+.download-progress-fill[data-status="paused"] {
   background: #9ca3af;
 }
 
 .download-progress-text {
-  min-width: 50px;
+  min-width: 45px;
   text-align: right;
-  font-weight: 600;
-  color: #4b5563;
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-family: inherit;
 }
 
 /* Stats */
 .download-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 8px;
+  padding: 0.75rem;
+  background: #f3f4f6;
+  border-radius: 3px;
+  border: 1px solid #e5e7eb;
 }
 
 .download-stat {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+  font-size: 0.65rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .stat-value {
-  font-size: 1rem;
-  color: #1f2937;
-  font-weight: 600;
+  font-size: 0.8rem;
+  color: #374151;
+  font-weight: 500;
+  font-family: inherit;
 }
 
 .stat-download {
@@ -231,72 +287,92 @@
 /* Details */
 .download-details {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dashed #e5e7eb;
 }
 
 .download-detail {
   display: flex;
   gap: 0.5rem;
+  font-size: 0.75rem;
 }
 
 .detail-label {
-  font-size: 0.875rem;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .detail-value {
-  font-size: 0.875rem;
-  color: #1f2937;
+  color: #4b5563;
   font-weight: 500;
+  font-family: inherit;
 }
 
 /* Actions */
 .download-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
+.download-actions .btn {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .btn-remove {
-  background: white;
-  color: #dc2626;
-  border: 2px solid #dc2626;
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
 }
 
 .btn-remove:hover {
-  background: #fef2f2;
+  color: #374151;
+  border-color: #9ca3af;
+  background: rgba(107, 114, 128, 0.05);
 }
 
 .btn-delete {
-  background: #dc2626;
-  color: white;
-  border: 2px solid #dc2626;
+  background: rgba(239, 68, 68, 0.05);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .btn-delete:hover {
-  background: #b91c1c;
-  border-color: #991b1b;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
-/* Stream Button */
+/* Stream Button - Terminal Style */
 .btn-stream {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
+  background: transparent;
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  padding: 0.4rem 0.75rem;
+  border-radius: 3px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.btn-stream::before {
+  content: "▶ ";
 }
 
 .btn-stream:hover {
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  transform: translateY(-1px);
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+  border-color: rgba(124, 58, 237, 0.4);
 }
 
 /* Stream Dropdown */
@@ -310,12 +386,12 @@
   position: absolute;
   bottom: 100%;
   left: 0;
-  min-width: 300px;
+  min-width: 350px;
   max-width: 500px;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   z-index: 100;
   margin-bottom: 8px;
   max-height: 300px;
@@ -331,32 +407,33 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.8rem;
   background: none;
   border: none;
+  border-bottom: 1px solid #f3f4f6;
   text-align: left;
   cursor: pointer;
-  font-size: 0.875rem;
-  color: #1f2937;
+  font-size: 0.75rem;
+  color: #374151;
   transition: background 0.15s;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 }
 
 .stream-file-option:hover {
-  background: #f3f4f6;
-}
-
-.stream-file-option:first-child {
-  border-radius: 8px 8px 0 0;
+  background: rgba(124, 58, 237, 0.05);
 }
 
 .stream-file-option:last-child {
-  border-radius: 0 0 8px 8px;
+  border-bottom: none;
 }
 
 .file-progress {
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 0.65rem;
+  color: #9ca3af;
   margin-left: 0.5rem;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  border-radius: 2px;
 }
 
 /* Video Player Modal */
@@ -384,26 +461,30 @@
   position: absolute;
   top: -40px;
   right: 0;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 24px;
+  background: transparent;
+  border: 1px solid #4b5563;
+  color: #9ca3af;
+  font-size: 14px;
   cursor: pointer;
-  padding: 8px;
+  padding: 4px 12px;
+  border-radius: 3px;
   opacity: 0.7;
-  transition: opacity 0.15s;
+  transition: all 0.15s;
   z-index: 10;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 }
 
 .video-close:hover {
   opacity: 1;
+  border-color: #6b7280;
+  color: #e5e7eb;
 }
 
 .video-player {
   width: 100%;
   max-height: 80vh;
   background: #000;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
 .video-info {
@@ -411,21 +492,53 @@
   justify-content: space-between;
   align-items: center;
   color: #9ca3af;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   padding: 0 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 }
 
 .video-title {
-  color: #fff;
+  color: #e5e7eb;
   font-weight: 500;
 }
 
 .video-progress {
-  background: rgba(139, 92, 246, 0.3);
-  color: #c4b5fd;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Resume/Pause buttons in downloads */
+.download-actions .btn-pause,
+.download-actions .btn-resume {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.download-actions .btn-resume {
+  background: transparent;
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.download-actions .btn-resume:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.download-actions .btn-pause {
+  background: transparent;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.download-actions .btn-pause:hover {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
 /* Responsive */
@@ -454,5 +567,6 @@
 
   .download-actions .btn {
     width: 100%;
+    text-align: center;
   }
 }
