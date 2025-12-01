@@ -7,8 +7,6 @@
 
 A toolkit for searching, downloading and streaming media using torrents, YouTube, and more.
 
-**WARNING: This is an old revived project. Torrent and IMDb search is quite stable, torrent download sometimes works, everything else is probably broken.**
-
 # Features
 
 - Search multiple torrent indexes for highest seeded Movies & TV shows

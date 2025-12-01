@@ -1,15 +1,39 @@
-import { useState, useEffect } from 'preact/hooks';
-import { TMDBResult, MovieDetail, TVDetail, SeasonDetail, Episode } from '../pages/Browse';
-import { TorrentList } from './TorrentList';
-import { Torrent } from '../types';
+import { useState, useEffect, useMemo } from "preact/hooks";
+import { TMDBResult, MovieDetail, TVDetail, SeasonDetail } from "../pages/Browse";
+import { TorrentList } from "./TorrentList";
+import { Torrent, Filters } from "../types";
 
 interface ContentDetailProps {
   content: TMDBResult;
   onBack: () => void;
-  onNotify: (message: string, type: 'success' | 'error') => void;
+  onNotify: (message: string, type: "success" | "error") => void;
 }
 
-const TMDB_IMG = 'https://image.tmdb.org/t/p';
+const TMDB_IMG = "https://image.tmdb.org/t/p";
+
+const RESOLUTIONS = ["4K", "1080p", "720p", "480p"];
+const VIDEO_CODECS = ["AV1", "H.265", "H.264", "XviD"];
+const AUDIO_CODECS = ["Dolby Atmos", "TrueHD", "DTS-HD", "DTS-X", "DTS", "AC3", "AAC"];
+const SOURCES = ["BluRay", "WEB-DL", "WEBRip", "HDTV"];
+const HDR_OPTIONS = ["Dolby Vision", "HDR10+", "HDR10"];
+
+const defaultFilters: Filters = {
+  categories: [],
+  providers: [],
+  resolutions: [],
+  videoCodecs: [],
+  audioCodecs: [],
+  sources: [],
+  hdr: [],
+  minSeeds: 0
+};
+
+interface OmdbRatings {
+  rottenTomatoes?: string;
+  imdb?: string;
+  metacritic?: string;
+  rottenTomatoesUrl?: string;
+}
 
 export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps) {
   const [details, setDetails] = useState<MovieDetail | TVDetail | null>(null);
@@ -20,14 +44,17 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
   const [loadingSeason, setLoadingSeason] = useState(false);
   const [loadingTorrents, setLoadingTorrents] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [omdbRatings, setOmdbRatings] = useState<OmdbRatings | null>(null);
 
-  const isTV = content.media_type === 'tv';
-  const title = content.title || content.name || 'Unknown';
-  const year = content.release_date || content.first_air_date
-    ? new Date((content.release_date || content.first_air_date)!).getFullYear()
-    : null;
+  const isTV = content.media_type === "tv";
+  const title = content.title || content.name || "Unknown";
+  const year =
+    content.release_date || content.first_air_date
+      ? new Date((content.release_date || content.first_air_date)!).getFullYear()
+      : null;
 
-  // Fetch details on mount
+  // Fetch details on mount and auto-search torrents for movies
   useEffect(() => {
     const fetchDetails = async () => {
       setLoadingDetails(true);
@@ -36,8 +63,45 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
         const response = await fetch(endpoint);
         const data = await response.json();
         setDetails(data);
+
+        // Auto-search torrents for movies
+        if (!isTV) {
+          const movieTitle = content.title || content.name || "Unknown";
+          const movieYear = content.release_date
+            ? new Date(content.release_date).getFullYear()
+            : null;
+          const query = movieYear ? `${movieTitle} ${movieYear}` : movieTitle;
+          searchTorrents(query);
+        }
+
+        // Fetch OMDB ratings (includes Rotten Tomatoes)
+        const omdbTitle = content.title || content.name || "";
+        const omdbYear =
+          content.release_date || content.first_air_date
+            ? new Date((content.release_date || content.first_air_date)!).getFullYear()
+            : undefined;
+        const omdbType = isTV ? "series" : "movie";
+
+        try {
+          const omdbRes = await fetch(
+            `/api/omdb?title=${encodeURIComponent(omdbTitle)}${
+              omdbYear ? `&year=${omdbYear}` : ""
+            }&type=${omdbType}`
+          );
+          if (omdbRes.ok) {
+            const omdbData = await omdbRes.json();
+            setOmdbRatings({
+              rottenTomatoes: omdbData.ratings?.rottenTomatoes,
+              imdb: omdbData.ratings?.imdb,
+              metacritic: omdbData.ratings?.metacritic,
+              rottenTomatoesUrl: omdbData.rottenTomatoesUrl
+            });
+          }
+        } catch {
+          // OMDB fetch failed silently - ratings just won't show
+        }
       } catch (error) {
-        onNotify('Failed to load details', 'error');
+        onNotify("Failed to load details", "error");
       } finally {
         setLoadingDetails(false);
       }
@@ -57,7 +121,7 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
         const data = await response.json();
         setSeasonDetails(data);
       } catch (error) {
-        onNotify('Failed to load season', 'error');
+        onNotify("Failed to load season", "error");
       } finally {
         setLoadingSeason(false);
       }
@@ -69,6 +133,7 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
     setLoadingTorrents(true);
     setSearchQuery(query);
     setTorrents([]);
+    setFilters(defaultFilters);
 
     try {
       const response = await fetch(`/api/search?name=${encodeURIComponent(query)}&limit=50`);
@@ -76,80 +141,165 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
       if (response.ok) {
         setTorrents(data.results || []);
         if (!data.results || data.results.length === 0) {
-          onNotify('No torrents found', 'error');
+          onNotify("No torrents found", "error");
         }
       } else {
-        onNotify(data.error || 'Search failed', 'error');
+        onNotify(data.error || "Search failed", "error");
       }
     } catch (error) {
-      onNotify('Failed to search torrents', 'error');
+      onNotify("Failed to search torrents", "error");
     } finally {
       setLoadingTorrents(false);
     }
   };
 
-  const handleSearchMovie = () => {
-    const query = year ? `${title} ${year}` : title;
-    searchTorrents(query);
-  };
-
   const handleSearchSeason = (seasonNum: number) => {
-    const seasonStr = seasonNum.toString().padStart(2, '0');
+    const seasonStr = seasonNum.toString().padStart(2, "0");
     searchTorrents(`${title} S${seasonStr} complete`);
   };
 
   const handleSearchEpisode = (seasonNum: number, episodeNum: number) => {
-    const seasonStr = seasonNum.toString().padStart(2, '0');
-    const episodeStr = episodeNum.toString().padStart(2, '0');
+    const seasonStr = seasonNum.toString().padStart(2, "0");
+    const episodeStr = episodeNum.toString().padStart(2, "0");
     searchTorrents(`${title} S${seasonStr}E${episodeStr}`);
   };
 
   const handleGetMagnet = async (torrent: Torrent) => {
     try {
-      const response = await fetch('/api/magnet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(torrent.raw),
+      const response = await fetch("/api/magnet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(torrent.raw)
       });
       const data = await response.json();
       if (response.ok) {
         await navigator.clipboard.writeText(data.magnet);
-        onNotify('Magnet link copied!', 'success');
+        onNotify("Magnet link copied!", "success");
       } else {
-        onNotify(data.error || 'Failed to get magnet', 'error');
+        onNotify(data.error || "Failed to get magnet", "error");
       }
     } catch (error) {
-      onNotify('Failed to get magnet link', 'error');
+      onNotify("Failed to get magnet link", "error");
     }
   };
 
   const handleDownload = async (torrent: Torrent) => {
     try {
-      const magnetResponse = await fetch('/api/magnet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(torrent.raw),
+      const magnetResponse = await fetch("/api/magnet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(torrent.raw)
       });
       const magnetData = await magnetResponse.json();
       if (!magnetResponse.ok) {
-        onNotify(magnetData.error || 'Failed to get magnet', 'error');
+        onNotify(magnetData.error || "Failed to get magnet", "error");
         return;
       }
 
-      const downloadResponse = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ magnet: magnetData.magnet }),
+      const downloadResponse = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ magnet: magnetData.magnet })
       });
       const downloadData = await downloadResponse.json();
       if (downloadResponse.ok) {
-        onNotify('Torrent added to downloads!', 'success');
+        onNotify("Torrent added to downloads!", "success");
       } else {
-        onNotify(downloadData.error || 'Failed to add torrent', 'error');
+        onNotify(downloadData.error || "Failed to add torrent", "error");
       }
     } catch (error) {
-      onNotify('Failed to download torrent', 'error');
+      onNotify("Failed to download torrent", "error");
     }
+  };
+
+  const handleBadgeClick = (type: string, value: string) => {
+    const filterMap: Record<string, keyof Filters> = {
+      resolution: "resolutions",
+      videoCodec: "videoCodecs",
+      audioCodec: "audioCodecs",
+      source: "sources",
+      hdr: "hdr"
+    };
+    const filterKey = filterMap[type];
+    if (filterKey) {
+      const current = filters[filterKey] as string[];
+      if (!current.includes(value)) {
+        setFilters({ ...filters, [filterKey]: [...current, value] });
+      }
+    }
+  };
+
+  const toggleFilter = (category: keyof Filters, value: string) => {
+    const current = filters[category] as string[];
+    const updated = current.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...current, value];
+    setFilters({ ...filters, [category]: updated });
+  };
+
+  const clearFilters = () => {
+    setFilters(defaultFilters);
+  };
+
+  const hasActiveFilters =
+    filters.resolutions.length > 0 ||
+    filters.videoCodecs.length > 0 ||
+    filters.audioCodecs.length > 0 ||
+    filters.sources.length > 0 ||
+    filters.hdr.length > 0;
+
+  // Filter torrents
+  const filteredTorrents = useMemo(() => {
+    return torrents.filter((torrent) => {
+      if (
+        filters.resolutions.length > 0 &&
+        !filters.resolutions.includes(torrent.metadata.resolution || "")
+      ) {
+        return false;
+      }
+      if (
+        filters.videoCodecs.length > 0 &&
+        !filters.videoCodecs.includes(torrent.metadata.videoCodec || "")
+      ) {
+        return false;
+      }
+      if (
+        filters.audioCodecs.length > 0 &&
+        !filters.audioCodecs.includes(torrent.metadata.audioCodec || "")
+      ) {
+        return false;
+      }
+      if (filters.sources.length > 0 && !filters.sources.includes(torrent.metadata.source || "")) {
+        return false;
+      }
+      if (filters.hdr.length > 0 && !filters.hdr.includes(torrent.metadata.hdr || "")) {
+        return false;
+      }
+      return true;
+    });
+  }, [torrents, filters]);
+
+  const handleOpenTrailer = () => {
+    if (details?.trailer) {
+      window.open(`https://www.youtube.com/watch?v=${details.trailer}`, "_blank");
+    }
+  };
+
+  const handleOpenRottenTomatoes = () => {
+    // Generate RT slug from title (lowercase, spaces to underscores, remove special chars)
+    const slug = title
+      .toLowerCase()
+      .replace(/['']/g, "") // Remove apostrophes
+      .replace(/[^a-z0-9\s]/g, "") // Remove special chars
+      .replace(/\s+/g, "_") // Spaces to underscores
+      .replace(/_+/g, "_") // Multiple underscores to single
+      .replace(/^_|_$/g, ""); // Trim underscores
+
+    const rtUrl = isTV
+      ? `https://www.rottentomatoes.com/tv/${slug}`
+      : `https://www.rottentomatoes.com/m/${slug}`;
+
+    window.open(rtUrl, "_blank");
   };
 
   const tvDetails = details as TVDetail;
@@ -168,11 +318,13 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
       ) : (
         <>
           {/* Hero section */}
-          <div class="content-hero" style={
-            content.backdrop_path
-              ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(250,250,250,1)), url(${TMDB_IMG}/w1280${content.backdrop_path})` }
-              : undefined
-          }>
+          <div class="content-hero">
+            {content.backdrop_path && (
+              <div
+                class="content-backdrop"
+                style={{ backgroundImage: `url(${TMDB_IMG}/w1280${content.backdrop_path})` }}
+              />
+            )}
             <div class="content-hero-inner">
               {content.poster_path && (
                 <img
@@ -182,36 +334,67 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
                 />
               )}
               <div class="content-hero-info">
-                <h1 class="content-detail-title">{title}</h1>
-                <div class="content-detail-meta">
-                  {year && <span>{year}</span>}
-                  {details && 'runtime' in details && details.runtime > 0 && (
-                    <span>{details.runtime} min</span>
-                  )}
-                  {isTV && tvDetails?.number_of_seasons && (
-                    <span>{tvDetails.number_of_seasons} season{tvDetails.number_of_seasons > 1 ? 's' : ''}</span>
-                  )}
-                  {content.vote_average > 0 && (
-                    <span class="content-rating">★ {content.vote_average.toFixed(1)}</span>
+                <div class="content-header-row">
+                  <div class="content-header-text">
+                    <h1 class="content-detail-title">{title}</h1>
+                    <div class="content-detail-meta">
+                      {year && <span class="meta-item">{year}</span>}
+                      {details && "runtime" in details && details.runtime > 0 && (
+                        <>
+                          <span class="meta-sep">•</span>
+                          <span class="meta-item">{details.runtime} min</span>
+                        </>
+                      )}
+                      {isTV && tvDetails?.number_of_seasons && (
+                        <>
+                          <span class="meta-sep">•</span>
+                          <span class="meta-item">
+                            {tvDetails.number_of_seasons} season
+                            {tvDetails.number_of_seasons > 1 ? "s" : ""}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {details?.trailer && (
+                    <button class="btn btn-trailer" onClick={handleOpenTrailer}>
+                      ▶ Trailer
+                    </button>
                   )}
                 </div>
+
+                <div class="content-ratings">
+                  {omdbRatings?.rottenTomatoes && (
+                    <button
+                      class="rating-item clickable"
+                      onClick={handleOpenRottenTomatoes}
+                      title="View on Rotten Tomatoes"
+                    >
+                      <span class="rating-icon">🍅</span>
+                      <span class="rating-value rt">{omdbRatings.rottenTomatoes}</span>
+                      <span class="rating-label">Critics</span>
+                    </button>
+                  )}
+                  {omdbRatings?.imdb && (
+                    <span class="rating-item">
+                      <span class="rating-icon">⭐</span>
+                      <span class="rating-value">{omdbRatings.imdb}</span>
+                      <span class="rating-label">IMDb</span>
+                    </span>
+                  )}
+                </div>
+
                 {details?.genres && (
                   <div class="content-genres">
-                    {details.genres.map(g => (
-                      <span key={g.id} class="genre-tag">{g.name}</span>
+                    {details.genres.map((g) => (
+                      <span key={g.id} class="genre-tag">
+                        {g.name}
+                      </span>
                     ))}
                   </div>
                 )}
-                {content.overview && (
-                  <p class="content-overview">{content.overview}</p>
-                )}
 
-                {/* Movie: Search button */}
-                {!isTV && (
-                  <button class="btn btn-primary" onClick={handleSearchMovie}>
-                    Find Torrents
-                  </button>
-                )}
+                {content.overview && <p class="content-overview">{content.overview}</p>}
               </div>
             </div>
           </div>
@@ -222,18 +405,24 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
               <h2>Seasons</h2>
               <div class="seasons-list">
                 {tvDetails.seasons
-                  .filter(s => s.season_number > 0)
-                  .map(season => (
+                  .filter((s) => s.season_number > 0)
+                  .map((season) => (
                     <div key={season.id} class="season-item">
                       <button
-                        class={`season-header ${selectedSeason === season.season_number ? 'active' : ''}`}
-                        onClick={() => setSelectedSeason(
-                          selectedSeason === season.season_number ? null : season.season_number
-                        )}
+                        class={`season-header ${
+                          selectedSeason === season.season_number ? "active" : ""
+                        }`}
+                        onClick={() =>
+                          setSelectedSeason(
+                            selectedSeason === season.season_number ? null : season.season_number
+                          )
+                        }
                       >
                         <span class="season-name">Season {season.season_number}</span>
                         <span class="season-episodes">{season.episode_count} episodes</span>
-                        <span class="season-expand">{selectedSeason === season.season_number ? '▼' : '▶'}</span>
+                        <span class="season-expand">
+                          {selectedSeason === season.season_number ? "▼" : "▶"}
+                        </span>
                       </button>
 
                       {selectedSeason === season.season_number && (
@@ -251,16 +440,20 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
                             </div>
                           ) : seasonDetails?.episodes ? (
                             <div class="episodes-list">
-                              {seasonDetails.episodes.map(ep => (
+                              {seasonDetails.episodes.map((ep) => (
                                 <button
                                   key={ep.id}
                                   class="episode-item"
-                                  onClick={() => handleSearchEpisode(season.season_number, ep.episode_number)}
+                                  onClick={() =>
+                                    handleSearchEpisode(season.season_number, ep.episode_number)
+                                  }
                                 >
                                   <span class="episode-number">E{ep.episode_number}</span>
                                   <span class="episode-name">{ep.name}</span>
                                   {ep.air_date && (
-                                    <span class="episode-date">{new Date(ep.air_date).toLocaleDateString()}</span>
+                                    <span class="episode-date">
+                                      {new Date(ep.air_date).toLocaleDateString()}
+                                    </span>
                                   )}
                                 </button>
                               ))}
@@ -277,16 +470,116 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
           {/* Torrent results */}
           {(searchQuery || loadingTorrents) && (
             <div class="torrents-section">
-              <h2>
-                Torrents
-                {searchQuery && <span class="search-query-label">for "{searchQuery}"</span>}
-              </h2>
+              <div class="torrents-header">
+                <h2>
+                  Torrents
+                  {searchQuery && <span class="search-query-label">for "{searchQuery}"</span>}
+                </h2>
+                {torrents.length > 0 && (
+                  <span class="torrent-count">
+                    {filteredTorrents.length === torrents.length
+                      ? `${torrents.length} results`
+                      : `${filteredTorrents.length} of ${torrents.length}`}
+                  </span>
+                )}
+              </div>
+
+              {/* Inline filters */}
+              {torrents.length > 0 && (
+                <div class="inline-filters">
+                  <div class="filter-group">
+                    <span class="filter-label">Resolution:</span>
+                    <div class="filter-chips">
+                      {RESOLUTIONS.map((res) => (
+                        <button
+                          key={res}
+                          class={`filter-chip ${filters.resolutions.includes(res) ? "active" : ""}`}
+                          onClick={() => toggleFilter("resolutions", res)}
+                        >
+                          {res}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-label">Video:</span>
+                    <div class="filter-chips">
+                      {VIDEO_CODECS.map((codec) => (
+                        <button
+                          key={codec}
+                          class={`filter-chip ${
+                            filters.videoCodecs.includes(codec) ? "active" : ""
+                          }`}
+                          onClick={() => toggleFilter("videoCodecs", codec)}
+                        >
+                          {codec}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-label">Audio:</span>
+                    <div class="filter-chips">
+                      {AUDIO_CODECS.map((codec) => (
+                        <button
+                          key={codec}
+                          class={`filter-chip ${
+                            filters.audioCodecs.includes(codec) ? "active" : ""
+                          }`}
+                          onClick={() => toggleFilter("audioCodecs", codec)}
+                        >
+                          {codec}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-label">Source:</span>
+                    <div class="filter-chips">
+                      {SOURCES.map((src) => (
+                        <button
+                          key={src}
+                          class={`filter-chip ${filters.sources.includes(src) ? "active" : ""}`}
+                          onClick={() => toggleFilter("sources", src)}
+                        >
+                          {src}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-label">HDR:</span>
+                    <div class="filter-chips">
+                      {HDR_OPTIONS.map((hdr) => (
+                        <button
+                          key={hdr}
+                          class={`filter-chip ${filters.hdr.includes(hdr) ? "active" : ""}`}
+                          onClick={() => toggleFilter("hdr", hdr)}
+                        >
+                          {hdr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {hasActiveFilters && (
+                    <button class="btn-clear-inline" onClick={clearFilters}>
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
+
               <TorrentList
-                torrents={torrents}
+                torrents={filteredTorrents}
                 loading={loadingTorrents}
                 onGetMagnet={handleGetMagnet}
                 onDownload={handleDownload}
-                onBadgeClick={() => {}}
+                onBadgeClick={handleBadgeClick}
               />
             </div>
           )}
@@ -295,4 +588,3 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
     </div>
   );
 }
-

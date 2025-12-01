@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { TMDBResult } from '../pages/Browse';
 
 interface ContentSearchProps {
@@ -6,12 +6,20 @@ interface ContentSearchProps {
   loading: boolean;
   onSearch: (query: string) => void;
   onSelect: (content: TMDBResult) => void;
+  initialQuery?: string;
 }
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 
-export function ContentSearch({ results, loading, onSearch, onSelect }: ContentSearchProps) {
-  const [query, setQuery] = useState('');
+export function ContentSearch({ results, loading, onSearch, onSelect, initialQuery = '' }: ContentSearchProps) {
+  const [query, setQuery] = useState(initialQuery);
+  
+  // Sync query with initialQuery when returning from detail view
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();

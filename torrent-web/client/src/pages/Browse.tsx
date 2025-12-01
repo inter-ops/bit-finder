@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useState, useRef } from 'preact/hooks';
 import { ContentSearch } from '../components/ContentSearch';
 import { ContentDetail } from '../components/ContentDetail';
 import { Notification } from '../components/Notification';
@@ -61,12 +61,16 @@ export default function Browse() {
     message: string;
     type: 'success' | 'error';
   } | null>(null);
+  
+  // Store the last search query to restore results when going back
+  const lastSearchQuery = useRef<string>('');
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) return;
 
     setLoading(true);
     setSelectedContent(null);
+    lastSearchQuery.current = query;
 
     try {
       const response = await fetch(`/api/tmdb/search?query=${encodeURIComponent(query)}`);
@@ -91,11 +95,12 @@ export default function Browse() {
 
   const handleSelectContent = (content: TMDBResult) => {
     setSelectedContent(content);
-    setSearchResults([]);
+    // Don't clear search results - keep them for when user goes back
   };
 
   const handleBack = () => {
     setSelectedContent(null);
+    // Search results are already preserved
   };
 
   return (
@@ -120,6 +125,7 @@ export default function Browse() {
           loading={loading}
           onSearch={handleSearch}
           onSelect={handleSelectContent}
+          initialQuery={lastSearchQuery.current}
         />
       )}
     </div>

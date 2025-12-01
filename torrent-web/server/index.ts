@@ -19,6 +19,10 @@ const TMDB_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5MDNmNDFiNjU3ZDU2NjU5NDViMjUzNTcyZjM0MTViOCIsIm5iZiI6MTc2NDU1MjY3MC45MDUsInN1YiI6IjY5MmNlZmRlZDk2MmM3NmYxNTI4NjM5NiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.cjmgBEIgbrhW6rlGMIpUXfzAMJ3s7gOsGdFAMvgbWfI";
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
+// OMDB API configuration (free tier - 1000 requests/day)
+const OMDB_KEY = "35e2a20"; // Free API key
+const OMDB_BASE = "https://www.omdbapi.com";
+
 const tmdbFetch = async (endpoint: string) => {
   const res = await fetch(`${TMDB_BASE}${endpoint}`, {
     headers: {
@@ -26,6 +30,17 @@ const tmdbFetch = async (endpoint: string) => {
       "Content-Type": "application/json"
     }
   });
+  return res.json();
+};
+
+const omdbFetch = async (title: string, year?: number, type?: "movie" | "series") => {
+  const params = new URLSearchParams({
+    apikey: OMDB_KEY,
+    t: title,
+    ...(year && { y: year.toString() }),
+    ...(type && { type })
+  });
+  const res = await fetch(`${OMDB_BASE}?${params}`);
   return res.json();
 };
 
@@ -39,7 +54,7 @@ if (process.env.NODE_ENV === "production") {
 
 // Search torrents
 app.get("/api/search", async (c) => {
-  const { name, limit, providers } = c.req.query();
+  const { name, limit } = c.req.query();
 
   if (!name) {
     return c.json({ error: "Name parameter is required" }, 400);
@@ -49,15 +64,7 @@ app.get("/api/search", async (c) => {
   const category = "all";
 
   try {
-    let results;
-    if (providers) {
-      // Use specific providers if specified
-      const providerList = providers.split(",").map((p: string) => p.trim());
-      results = await search(name, category, resultLimit, providerList);
-    } else {
-      // Use all providers by default
-      results = await search(name, category, resultLimit);
-    }
+    const results = await search(name, category, resultLimit);
 
     // Parse and enrich torrents with metadata, filtering out invalid ones
     const parsedResults = results.map(parseTorrent).filter((t) => {
@@ -245,6 +252,52 @@ app.get("/api/tmdb/tv/:id/season/:season", async (c) => {
   } catch (error) {
     console.error("TMDB season error:", error);
     return c.json({ error: "Failed to get season details" }, 500);
+  }
+});
+
+// Get OMDB ratings (includes Rotten Tomatoes)
+app.get("/api/omdb", async (c) => {
+  const { title, year, type } = c.req.query();
+  if (!title) {
+    return c.json({ error: "Title parameter is required" }, 400);
+  }
+  try {
+    const data = await omdbFetch(
+      title,
+      year ? parseInt(year) : undefined,
+      type as "movie" | "series" | undefined
+    );
+
+    if (data.Response === "False") {
+      return c.json({ error: data.Error || "Not found" }, 404);
+    }
+
+    // Extract Rotten Tomatoes ratings
+    const ratings: Record<string, string> = {};
+    if (data.Ratings) {
+      for (const rating of data.Ratings) {
+        if (rating.Source === "Rotten Tomatoes") {
+          ratings.rottenTomatoes = rating.Value;
+        } else if (rating.Source === "Internet Movie Database") {
+          ratings.imdb = rating.Value;
+        } else if (rating.Source === "Metacritic") {
+          ratings.metacritic = rating.Value;
+        }
+      }
+    }
+
+    return c.json({
+      title: data.Title,
+      year: data.Year,
+      imdbID: data.imdbID,
+      ratings,
+      rottenTomatoesUrl: data.imdbID
+        ? `https://www.rottentomatoes.com/search?search=${encodeURIComponent(data.Title)}`
+        : null
+    });
+  } catch (error) {
+    console.error("OMDB error:", error);
+    return c.json({ error: "Failed to get OMDB data" }, 500);
   }
 });
 
