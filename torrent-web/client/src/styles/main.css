@@ -416,48 +416,29 @@ body {
   gap: 8px;
 }
 
-/* Title row styling */
-.title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
+/* Title styling */
 .torrent-title {
-  flex: 1;
+  display: block;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
   margin: 0;
   line-height: 1.4;
-  word-break: break-word;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.torrent-title.clickable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.torrent-title.clickable:hover {
+a.torrent-title:hover {
   color: var(--accent-blue);
 }
 
-.expand-icon {
-  font-size: 9px;
-  color: var(--text-muted);
-  margin-left: 4px;
-}
-
-.source-link-inline {
+/* Episode info for TV shows */
+.episode-info {
   font-size: 11px;
-  text-decoration: none;
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition: opacity 0.15s ease;
-}
-
-.source-link-inline:hover {
-  opacity: 1;
+  color: var(--text-muted);
+  margin-top: 4px;
 }
 
 /* Quality Badges */
