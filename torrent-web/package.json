@@ -3,14 +3,21 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch server/index.ts",
+    "dev": "npx tsx --watch server/index.ts",
+    "dev:client": "cd client && bun run dev",
     "build": "cd client && bun run build",
     "preview": "cd client && bun run preview"
   },
   "dependencies": {
-    "hono": "^4.0.0"
+    "@hono/node-server": "^1.19.6",
+    "hono": "^4.0.0",
+    "webtorrent": "^2.8.5"
   },
   "devDependencies": {
     "@types/bun": "latest"
-  }
+  },
+  "trustedDependencies": [
+    "node-datachannel",
+    "utp-native"
+  ]
 }

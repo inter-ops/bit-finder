@@ -1,38 +1,45 @@
-import { h } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
-import DownloadCard from '../components/DownloadCard';
-import '../styles/downloads.css';
+import { h } from "preact";
+import { useState, useEffect } from "preact/hooks";
+import DownloadCard from "../components/DownloadCard";
+import "../styles/downloads.css";
 
-interface TransmissionTorrent {
-  id: number;
+// WebTorrent torrent info interface
+export interface WebTorrentInfo {
+  infoHash: string;
   name: string;
-  status: number;
-  percentDone: number;
-  rateDownload: number;
-  rateUpload: number;
-  uploadRatio: number;
-  eta: number;
+  progress: number;
+  downloadSpeed: number;
+  uploadSpeed: number;
+  numPeers: number;
+  downloaded: number;
+  uploaded: number;
   totalSize: number;
-  uploadedEver: number;
-  downloadedEver: number;
-  peersConnected: number;
-  peersGettingFromUs: number;
-  peersSendingToUs: number;
-  seeders: number;
-  leechers: number;
-  addedDate: number;
+  timeRemaining: number;
+  paused: boolean;
+  done: boolean;
+  magnetURI: string;
+  files: FileInfo[];
+}
+
+interface FileInfo {
+  name: string;
+  path: string;
+  size: number;
+  downloaded: number;
+  progress: number;
+  index: number;
 }
 
 export default function Downloads() {
-  const [torrents, setTorrents] = useState<TransmissionTorrent[]>([]);
+  const [torrents, setTorrents] = useState<WebTorrentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTorrents = async () => {
     try {
-      const response = await fetch('/api/torrents');
+      const response = await fetch("/api/torrents");
       const data = await response.json();
-      
+
       if (data.error) {
         setError(data.error);
         setTorrents([]);
@@ -41,7 +48,7 @@ export default function Downloads() {
         setError(null);
       }
     } catch (err) {
-      setError('Failed to fetch torrents');
+      setError("Failed to fetch torrents");
       setTorrents([]);
     } finally {
       setLoading(false);
@@ -50,50 +57,50 @@ export default function Downloads() {
 
   useEffect(() => {
     fetchTorrents();
-    
+
     // Auto-refresh every 2 seconds
     const interval = setInterval(fetchTorrents, 2000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
-  const handlePause = async (id: number) => {
+  const handlePause = async (infoHash: string) => {
     try {
-      await fetch(`/api/torrents/${id}/pause`, { method: 'POST' });
+      await fetch(`/api/torrents/${infoHash}/pause`, { method: "POST" });
       fetchTorrents();
     } catch (err) {
-      console.error('Failed to pause torrent:', err);
+      console.error("Failed to pause torrent:", err);
     }
   };
 
-  const handleResume = async (id: number) => {
+  const handleResume = async (infoHash: string) => {
     try {
-      await fetch(`/api/torrents/${id}/resume`, { method: 'POST' });
+      await fetch(`/api/torrents/${infoHash}/resume`, { method: "POST" });
       fetchTorrents();
     } catch (err) {
-      console.error('Failed to resume torrent:', err);
+      console.error("Failed to resume torrent:", err);
     }
   };
 
-  const handleRemove = async (id: number) => {
-    if (!confirm('Remove this torrent from the list? (Files will be kept)')) return;
-    
+  const handleRemove = async (infoHash: string) => {
+    if (!confirm("Remove this torrent from the list? (Files will be kept)")) return;
+
     try {
-      await fetch(`/api/torrents/${id}/remove`, { method: 'DELETE' });
+      await fetch(`/api/torrents/${infoHash}/remove`, { method: "DELETE" });
       fetchTorrents();
     } catch (err) {
-      console.error('Failed to remove torrent:', err);
+      console.error("Failed to remove torrent:", err);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this torrent AND all downloaded files? This cannot be undone!')) return;
-    
+  const handleDelete = async (infoHash: string) => {
+    if (!confirm("Delete this torrent AND all downloaded files? This cannot be undone!")) return;
+
     try {
-      await fetch(`/api/torrents/${id}/delete`, { method: 'DELETE' });
+      await fetch(`/api/torrents/${infoHash}/delete`, { method: "DELETE" });
       fetchTorrents();
     } catch (err) {
-      console.error('Failed to delete torrent:', err);
+      console.error("Failed to delete torrent:", err);
     }
   };
 
@@ -124,7 +131,7 @@ export default function Downloads() {
       <div class="downloads-header">
         <h1>Downloads</h1>
         <div class="downloads-stats">
-          {torrents.length} active torrent{torrents.length !== 1 ? 's' : ''}
+          {torrents.length} active torrent{torrents.length !== 1 ? "s" : ""}
         </div>
       </div>
 
@@ -137,12 +144,12 @@ export default function Downloads() {
         <div class="downloads-list">
           {torrents.map((torrent) => (
             <DownloadCard
-              key={torrent.id}
+              key={torrent.infoHash}
               torrent={torrent}
-              onPause={() => handlePause(torrent.id)}
-              onResume={() => handleResume(torrent.id)}
-              onRemove={() => handleRemove(torrent.id)}
-              onDelete={() => handleDelete(torrent.id)}
+              onPause={() => handlePause(torrent.infoHash)}
+              onResume={() => handleResume(torrent.infoHash)}
+              onRemove={() => handleRemove(torrent.infoHash)}
+              onDelete={() => handleDelete(torrent.infoHash)}
             />
           ))}
         </div>

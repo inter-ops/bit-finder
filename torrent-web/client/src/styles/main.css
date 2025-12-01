@@ -1,25 +1,25 @@
 /* Terminal/Dashboard Style - Clean and Minimal */
 :root {
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', 'Monaco', monospace;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  
+  --font-mono: "JetBrains Mono", "SF Mono", "Consolas", "Monaco", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
   --bg-primary: #ffffff;
   --bg-secondary: #fafafa;
   --bg-card: #ffffff;
-  
+
   --border-color: #e5e5e5;
   --border-dark: #d0d0d0;
-  
+
   --text-primary: #1a1a1a;
   --text-secondary: #555555;
   --text-muted: #888888;
-  
+
   --accent-green: #18be94;
   --accent-blue: #3b82f6;
   --accent-orange: #f59e0b;
   --accent-red: #ef4444;
   --accent-purple: #8b5cf6;
-  
+
   --badge-bg: #f5f5f5;
   --badge-border: #e0e0e0;
 }
@@ -352,6 +352,18 @@ body {
   cursor: not-allowed;
 }
 
+.btn-downloading {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-purple);
+  border: 2px solid var(--accent-purple);
+  cursor: pointer;
+}
+
+.btn-downloading:hover {
+  background: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--text-secondary);
@@ -372,7 +384,9 @@ body {
   border: 1px solid var(--border-color);
 }
 
-.loading-container, .empty-state, .loading-state {
+.loading-container,
+.empty-state,
+.loading-state {
   text-align: center;
   padding: 60px 20px;
   color: var(--text-muted);
@@ -382,7 +396,8 @@ body {
   margin-top: 16px;
 }
 
-.loading-spinner, .spinner {
+.loading-spinner,
+.spinner {
   width: 24px;
   height: 24px;
   border: 2px solid var(--border-color);
@@ -392,9 +407,10 @@ body {
   margin: 0 auto 8px;
 }
 
-
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Torrent Card - Row Style */
@@ -791,7 +807,7 @@ a.torrent-title:hover {
   font-weight: 700;
   margin: 0 0 6px;
   color: #fff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .content-detail-meta {
@@ -803,12 +819,12 @@ a.torrent-title:hover {
 }
 
 .meta-item {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 }
 
 .meta-sep {
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* Ratings */
@@ -825,8 +841,8 @@ a.torrent-title:hover {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 6px 12px;
   border-radius: 4px;
   font-family: inherit;
@@ -838,8 +854,8 @@ a.torrent-title:hover {
 }
 
 .rating-item.clickable:hover {
-  background: rgba(0,0,0,0.6);
-  border-color: rgba(255,255,255,0.3);
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .rating-item .rating-icon {
@@ -857,7 +873,7 @@ a.torrent-title:hover {
 }
 
 .rating-item .rating-label {
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
@@ -871,17 +887,17 @@ a.torrent-title:hover {
 }
 
 .genre-tag {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 4px 10px;
   font-size: 11px;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255, 255, 255, 0.8);
   border-radius: 3px;
 }
 
 .content-overview {
   font-size: 13px;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.6;
   max-width: 600px;
 }
@@ -1204,5 +1220,86 @@ a.torrent-title:hover {
 
   .content-genres {
     justify-content: center;
+  }
+}
+
+/* Trailer Modal */
+.trailer-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.trailer-modal-content {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  animation: scaleIn 0.25s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.trailer-modal-content iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.trailer-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.trailer-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .trailer-modal {
+    padding: 10px;
+  }
+
+  .trailer-close {
+    top: -35px;
+    font-size: 20px;
   }
 }

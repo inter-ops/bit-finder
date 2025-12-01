@@ -7,6 +7,7 @@ interface ContentDetailProps {
   content: TMDBResult;
   onBack: () => void;
   onNotify: (message: string, type: "success" | "error") => void;
+  onNavigateToDownloads?: () => void;
 }
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
@@ -35,7 +36,12 @@ interface OmdbRatings {
   rottenTomatoesUrl?: string;
 }
 
-export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps) {
+export function ContentDetail({
+  content,
+  onBack,
+  onNotify,
+  onNavigateToDownloads
+}: ContentDetailProps) {
   const [details, setDetails] = useState<MovieDetail | TVDetail | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetail | null>(null);
@@ -46,6 +52,8 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [omdbRatings, setOmdbRatings] = useState<OmdbRatings | null>(null);
+  const [showTrailer, setShowTrailer] = useState(false);
+  const [downloadingTorrents, setDownloadingTorrents] = useState<Set<string>>(new Set());
 
   const isTV = content.media_type === "tv";
   const title = content.title || content.name || "Unknown";
@@ -184,6 +192,15 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
   };
 
   const handleDownload = async (torrent: Torrent) => {
+    // Generate a unique ID for this torrent
+    const torrentId = torrent.raw?.id || torrent.title;
+
+    // If already downloading, navigate to downloads page
+    if (downloadingTorrents.has(torrentId)) {
+      onNavigateToDownloads?.();
+      return;
+    }
+
     try {
       const magnetResponse = await fetch("/api/magnet", {
         method: "POST",
@@ -203,7 +220,9 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
       });
       const downloadData = await downloadResponse.json();
       if (downloadResponse.ok) {
-        onNotify("Torrent added to downloads!", "success");
+        // Mark as downloading
+        setDownloadingTorrents((prev) => new Set(prev).add(torrentId));
+        onNotify("Torrent added! Click again to view downloads", "success");
       } else {
         onNotify(downloadData.error || "Failed to add torrent", "error");
       }
@@ -281,8 +300,12 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
 
   const handleOpenTrailer = () => {
     if (details?.trailer) {
-      window.open(`https://www.youtube.com/watch?v=${details.trailer}`, "_blank");
+      setShowTrailer(true);
     }
+  };
+
+  const handleCloseTrailer = () => {
+    setShowTrailer(false);
   };
 
   const handleOpenRottenTomatoes = () => {
@@ -580,10 +603,29 @@ export function ContentDetail({ content, onBack, onNotify }: ContentDetailProps)
                 onGetMagnet={handleGetMagnet}
                 onDownload={handleDownload}
                 onBadgeClick={handleBadgeClick}
+                downloadingTorrents={downloadingTorrents}
               />
             </div>
           )}
         </>
+      )}
+
+      {/* Trailer Modal */}
+      {showTrailer && details?.trailer && (
+        <div class="trailer-modal" onClick={handleCloseTrailer}>
+          <div class="trailer-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button class="trailer-close" onClick={handleCloseTrailer}>
+              ✕
+            </button>
+            <iframe
+              src={`https://www.youtube.com/embed/${details.trailer}?autoplay=1&rel=0`}
+              title={`${title} Trailer`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
       )}
     </div>
   );

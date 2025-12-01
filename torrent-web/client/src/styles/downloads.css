@@ -244,6 +244,152 @@
   border-color: #991b1b;
 }
 
+/* Stream Button */
+.btn-stream {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-stream:hover {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  transform: translateY(-1px);
+}
+
+/* Stream Dropdown */
+.stream-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.stream-dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  min-width: 300px;
+  max-width: 500px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-bottom: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.stream-dropdown:hover .stream-dropdown-content {
+  display: block;
+}
+
+.stream-file-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: background 0.15s;
+}
+
+.stream-file-option:hover {
+  background: #f3f4f6;
+}
+
+.stream-file-option:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.stream-file-option:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.file-progress {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+}
+
+/* Video Player Modal */
+.video-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.video-modal-content {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.video-close:hover {
+  opacity: 1;
+}
+
+.video-player {
+  width: 100%;
+  max-height: 80vh;
+  background: #000;
+  border-radius: 8px;
+}
+
+.video-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  padding: 0 4px;
+}
+
+.video-title {
+  color: #fff;
+  font-weight: 500;
+}
+
+.video-progress {
+  background: rgba(139, 92, 246, 0.3);
+  color: #c4b5fd;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .downloads-page {

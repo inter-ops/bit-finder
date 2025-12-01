@@ -1,11 +1,11 @@
-import { useState, useRef } from 'preact/hooks';
-import { ContentSearch } from '../components/ContentSearch';
-import { ContentDetail } from '../components/ContentDetail';
-import { Notification } from '../components/Notification';
+import { useState, useRef } from "preact/hooks";
+import { ContentSearch } from "../components/ContentSearch";
+import { ContentDetail } from "../components/ContentDetail";
+import { Notification } from "../components/Notification";
 
 export interface TMDBResult {
   id: number;
-  media_type: 'movie' | 'tv';
+  media_type: "movie" | "tv";
   title?: string;
   name?: string;
   poster_path: string | null;
@@ -53,17 +53,21 @@ export interface SeasonDetail {
   episodes: Episode[];
 }
 
-export default function Browse() {
+interface BrowseProps {
+  onNavigateToDownloads?: () => void;
+}
+
+export default function Browse({ onNavigateToDownloads }: BrowseProps) {
   const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
   const [selectedContent, setSelectedContent] = useState<TMDBResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
-    type: 'success' | 'error';
+    type: "success" | "error";
   } | null>(null);
-  
+
   // Store the last search query to restore results when going back
-  const lastSearchQuery = useRef<string>('');
+  const lastSearchQuery = useRef<string>("");
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) return;
@@ -79,14 +83,14 @@ export default function Browse() {
       if (response.ok) {
         setSearchResults(data.results || []);
         if (!data.results || data.results.length === 0) {
-          setNotification({ message: 'No results found', type: 'error' });
+          setNotification({ message: "No results found", type: "error" });
         }
       } else {
-        setNotification({ message: data.error || 'Search failed', type: 'error' });
+        setNotification({ message: data.error || "Search failed", type: "error" });
         setSearchResults([]);
       }
     } catch (error) {
-      setNotification({ message: 'Failed to search', type: 'error' });
+      setNotification({ message: "Failed to search", type: "error" });
       setSearchResults([]);
     } finally {
       setLoading(false);
@@ -118,6 +122,7 @@ export default function Browse() {
           content={selectedContent}
           onBack={handleBack}
           onNotify={(message, type) => setNotification({ message, type })}
+          onNavigateToDownloads={onNavigateToDownloads}
         />
       ) : (
         <ContentSearch
@@ -131,4 +136,3 @@ export default function Browse() {
     </div>
   );
 }
-

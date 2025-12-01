@@ -280,7 +280,9 @@ export function App() {
 
       <main class="main">
         <div class="container">
-          {activeTab === "browse" && <Browse />}
+          {activeTab === "browse" && (
+            <Browse onNavigateToDownloads={() => setActiveTab("downloads")} />
+          )}
           {activeTab === "search" && (
             <>
               <SearchBar onSearch={handleSearch} loading={loading} />

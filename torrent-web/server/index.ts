@@ -1,16 +1,20 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serveStatic } from "hono/bun";
+import { stream } from "hono/streaming";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { search, getMagnet } from "../../src/services/torrent.js";
+import { parseTorrent } from "./torrentParser.js";
 import {
-  search,
-  getMagnet,
-  add,
+  addTorrent,
   getTorrents,
+  getTorrent,
   pauseTorrent,
   resumeTorrent,
-  removeTorrent
-} from "../../src/services/torrent.js";
-import { parseTorrent } from "./torrentParser.js";
+  removeTorrent,
+  getFileByIndex,
+  getVideoFile
+} from "./webtorrent.js";
 
 const app = new Hono();
 
@@ -100,7 +104,7 @@ app.post("/api/magnet", async (c) => {
   }
 });
 
-// Download torrent
+// Download torrent (add to WebTorrent)
 app.post("/api/download", async (c) => {
   try {
     const { magnet } = await c.req.json();
@@ -109,8 +113,8 @@ app.post("/api/download", async (c) => {
       return c.json({ error: "Magnet parameter is required" }, 400);
     }
 
-    await add(magnet);
-    return c.json({ success: true, message: "Torrent added successfully" });
+    const torrent = await addTorrent(magnet);
+    return c.json({ success: true, message: "Torrent added successfully", torrent });
   } catch (error) {
     console.error("Download error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to add torrent";
@@ -121,7 +125,7 @@ app.post("/api/download", async (c) => {
 // Get all torrents
 app.get("/api/torrents", async (c) => {
   try {
-    const torrents = await getTorrents();
+    const torrents = getTorrents();
     return c.json({ torrents });
   } catch (error) {
     console.error("Get torrents error:", error);
@@ -130,11 +134,30 @@ app.get("/api/torrents", async (c) => {
   }
 });
 
-// Pause torrent
-app.post("/api/torrents/:id/pause", async (c) => {
+// Get single torrent
+app.get("/api/torrents/:infoHash", async (c) => {
   try {
-    const id = parseInt(c.req.param("id"));
-    await pauseTorrent(id);
+    const infoHash = c.req.param("infoHash");
+    const torrent = getTorrent(infoHash);
+    if (!torrent) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
+    return c.json({ torrent });
+  } catch (error) {
+    console.error("Get torrent error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to get torrent";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Pause torrent
+app.post("/api/torrents/:infoHash/pause", async (c) => {
+  try {
+    const infoHash = c.req.param("infoHash");
+    const success = pauseTorrent(infoHash);
+    if (!success) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
     return c.json({ success: true, message: "Torrent paused" });
   } catch (error) {
     console.error("Pause torrent error:", error);
@@ -144,10 +167,13 @@ app.post("/api/torrents/:id/pause", async (c) => {
 });
 
 // Resume torrent
-app.post("/api/torrents/:id/resume", async (c) => {
+app.post("/api/torrents/:infoHash/resume", async (c) => {
   try {
-    const id = parseInt(c.req.param("id"));
-    await resumeTorrent(id);
+    const infoHash = c.req.param("infoHash");
+    const success = resumeTorrent(infoHash);
+    if (!success) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
     return c.json({ success: true, message: "Torrent resumed" });
   } catch (error) {
     console.error("Resume torrent error:", error);
@@ -157,10 +183,13 @@ app.post("/api/torrents/:id/resume", async (c) => {
 });
 
 // Remove torrent (without deleting data)
-app.delete("/api/torrents/:id/remove", async (c) => {
+app.delete("/api/torrents/:infoHash/remove", async (c) => {
   try {
-    const id = parseInt(c.req.param("id"));
-    await removeTorrent(id, false);
+    const infoHash = c.req.param("infoHash");
+    const success = await removeTorrent(infoHash, false);
+    if (!success) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
     return c.json({ success: true, message: "Torrent removed" });
   } catch (error) {
     console.error("Remove torrent error:", error);
@@ -170,16 +199,118 @@ app.delete("/api/torrents/:id/remove", async (c) => {
 });
 
 // Delete torrent (with data)
-app.delete("/api/torrents/:id/delete", async (c) => {
+app.delete("/api/torrents/:infoHash/delete", async (c) => {
   try {
-    const id = parseInt(c.req.param("id"));
-    await removeTorrent(id, true);
+    const infoHash = c.req.param("infoHash");
+    const success = await removeTorrent(infoHash, true);
+    if (!success) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
     return c.json({ success: true, message: "Torrent and data deleted" });
   } catch (error) {
     console.error("Delete torrent error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to delete torrent";
     return c.json({ error: errorMessage }, 500);
   }
+});
+
+// Stream video from torrent
+app.get("/api/stream/:infoHash", async (c) => {
+  const infoHash = c.req.param("infoHash");
+  const fileIndexParam = c.req.query("file");
+
+  // Get file - either by index or auto-select video
+  let file;
+  if (fileIndexParam !== undefined) {
+    const fileIndex = parseInt(fileIndexParam);
+    file = getFileByIndex(infoHash, fileIndex);
+  } else {
+    file = getVideoFile(infoHash);
+  }
+
+  if (!file) {
+    return c.json({ error: "File not found" }, 404);
+  }
+
+  const fileSize = file.length;
+  const range = c.req.header("range");
+
+  // Determine content type
+  const ext = file.name.toLowerCase().split(".").pop();
+  const mimeTypes: Record<string, string> = {
+    mp4: "video/mp4",
+    mkv: "video/x-matroska",
+    avi: "video/x-msvideo",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    m4v: "video/mp4"
+  };
+  const contentType = mimeTypes[ext || ""] || "application/octet-stream";
+
+  // Handle Range request for seeking
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
+
+    c.status(206);
+    c.header("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+    c.header("Accept-Ranges", "bytes");
+    c.header("Content-Length", String(chunkSize));
+    c.header("Content-Type", contentType);
+
+    // Create read stream for the range
+    const readStream = file.createReadStream({ start, end });
+
+    return stream(c, async (stream) => {
+      for await (const chunk of readStream) {
+        await stream.write(chunk);
+      }
+    });
+  }
+
+  // No range - return full file
+  c.header("Content-Length", String(fileSize));
+  c.header("Content-Type", contentType);
+  c.header("Accept-Ranges", "bytes");
+
+  const readStream = file.createReadStream();
+
+  return stream(c, async (stream) => {
+    for await (const chunk of readStream) {
+      await stream.write(chunk);
+    }
+  });
+});
+
+// Get stream info (for UI to show available files)
+app.get("/api/stream/:infoHash/info", async (c) => {
+  const infoHash = c.req.param("infoHash");
+  const torrent = getTorrent(infoHash);
+
+  if (!torrent) {
+    return c.json({ error: "Torrent not found" }, 404);
+  }
+
+  // Find video files
+  const videoExtensions = [".mp4", ".mkv", ".avi", ".webm", ".mov", ".m4v"];
+  const videoFiles = torrent.files.filter((file) =>
+    videoExtensions.some((ext) => file.name.toLowerCase().endsWith(ext))
+  );
+
+  return c.json({
+    infoHash,
+    name: torrent.name,
+    progress: torrent.progress,
+    videoFiles: videoFiles.map((f) => ({
+      index: f.index,
+      name: f.name,
+      size: f.size,
+      progress: f.progress,
+      streamUrl: `/api/stream/${infoHash}?file=${f.index}`
+    }))
+  });
 });
 
 // TMDB Routes
@@ -304,14 +435,18 @@ app.get("/api/omdb", async (c) => {
 // Serve static files from client/dist in production
 const isDev = process.env.NODE_ENV !== "production";
 if (!isDev) {
-  app.get("*", serveStatic({ root: "./client/dist" }));
-  app.get("*", serveStatic({ path: "./client/dist/index.html" }));
+  app.use("/*", serveStatic({ root: "./client/dist" }));
 }
 
-const port = process.env.PORT || 3000;
-console.log(`Server running on http://localhost:${port}`);
+const port = Number(process.env.PORT) || 3000;
 
-export default {
-  port,
-  fetch: app.fetch
-};
+// Start server with Node.js adapter
+serve(
+  {
+    fetch: app.fetch,
+    port
+  },
+  () => {
+    console.log(`Server running on http://localhost:${port}`);
+  }
+);
