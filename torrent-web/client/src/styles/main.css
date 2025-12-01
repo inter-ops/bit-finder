@@ -634,6 +634,305 @@ a.torrent-title:hover {
   color: var(--text-primary);
 }
 
+/* ========================================
+   Browse Page Styles
+   ======================================== */
+
+/* Content Grid */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  overflow: hidden;
+}
+
+.content-card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.content-poster {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  display: block;
+}
+
+.content-poster-placeholder {
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.content-info {
+  padding: 10px;
+}
+
+.content-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.content-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.content-type {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border: 1px solid var(--border-color);
+}
+
+.content-rating {
+  color: var(--accent-orange);
+}
+
+/* Content Detail Page */
+.content-detail {
+  max-width: 1000px;
+}
+
+.back-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: all 0.15s ease;
+}
+
+.back-button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.content-hero {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 20px;
+  margin-bottom: 20px;
+  background-size: cover;
+  background-position: center top;
+}
+
+.content-hero-inner {
+  display: flex;
+  gap: 20px;
+}
+
+.content-detail-poster {
+  width: 180px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+}
+
+.content-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.content-detail-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+
+.content-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.content-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.genre-tag {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.content-overview {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* Seasons Section */
+.seasons-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.seasons-section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+
+.seasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border-color);
+}
+
+.season-item {
+  background: var(--bg-primary);
+}
+
+.season-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.season-header:hover {
+  background: var(--bg-secondary);
+}
+
+.season-header.active {
+  background: var(--bg-secondary);
+}
+
+.season-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.season-episodes {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.season-expand {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.season-content {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+.season-complete-btn {
+  margin-bottom: 12px;
+}
+
+.episodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border-color);
+}
+
+.episode-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.episode-item:hover {
+  background: #f0f7ff;
+}
+
+.episode-number {
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 32px;
+}
+
+.episode-name {
+  flex: 1;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.episode-date {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Torrents Section */
+.torrents-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+}
+
+.torrents-section h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+}
+
+.search-query-label {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: 8px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .container {
@@ -665,5 +964,22 @@ a.torrent-title:hover {
     left: 12px;
     right: 12px;
     max-width: none;
+  }
+
+  .content-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .content-hero-inner {
+    flex-direction: column;
+  }
+
+  .content-detail-poster {
+    width: 120px;
+  }
+
+  .content-detail-title {
+    font-size: 18px;
   }
 }

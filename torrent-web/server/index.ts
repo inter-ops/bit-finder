@@ -14,6 +14,21 @@ import { parseTorrent } from "./torrentParser.js";
 
 const app = new Hono();
 
+// TMDB API configuration
+const TMDB_TOKEN =
+  "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5MDNmNDFiNjU3ZDU2NjU5NDViMjUzNTcyZjM0MTViOCIsIm5iZiI6MTc2NDU1MjY3MC45MDUsInN1YiI6IjY5MmNlZmRlZDk2MmM3NmYxNTI4NjM5NiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.cjmgBEIgbrhW6rlGMIpUXfzAMJ3s7gOsGdFAMvgbWfI";
+const TMDB_BASE = "https://api.themoviedb.org/3";
+
+const tmdbFetch = async (endpoint: string) => {
+  const res = await fetch(`${TMDB_BASE}${endpoint}`, {
+    headers: {
+      Authorization: `Bearer ${TMDB_TOKEN}`,
+      "Content-Type": "application/json"
+    }
+  });
+  return res.json();
+};
+
 // Enable CORS for development
 app.use("/*", cors());
 
@@ -157,6 +172,79 @@ app.delete("/api/torrents/:id/delete", async (c) => {
     console.error("Delete torrent error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to delete torrent";
     return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// TMDB Routes
+
+// Search movies and TV shows
+app.get("/api/tmdb/search", async (c) => {
+  const { query } = c.req.query();
+  if (!query) {
+    return c.json({ error: "Query parameter is required" }, 400);
+  }
+  try {
+    const data = await tmdbFetch(
+      `/search/multi?query=${encodeURIComponent(query)}&include_adult=false`
+    );
+    // Filter to only movies and TV shows
+    const results = (data.results || []).filter(
+      (item: any) => item.media_type === "movie" || item.media_type === "tv"
+    );
+    return c.json({ results });
+  } catch (error) {
+    console.error("TMDB search error:", error);
+    return c.json({ error: "Failed to search TMDB" }, 500);
+  }
+});
+
+// Get movie details
+app.get("/api/tmdb/movie/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const [details, videos] = await Promise.all([
+      tmdbFetch(`/movie/${id}`),
+      tmdbFetch(`/movie/${id}/videos`)
+    ]);
+    // Find trailer
+    const trailer = (videos.results || []).find(
+      (v: any) => v.type === "Trailer" && v.site === "YouTube"
+    );
+    return c.json({ ...details, trailer: trailer?.key });
+  } catch (error) {
+    console.error("TMDB movie error:", error);
+    return c.json({ error: "Failed to get movie details" }, 500);
+  }
+});
+
+// Get TV show details with seasons
+app.get("/api/tmdb/tv/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const [details, videos] = await Promise.all([
+      tmdbFetch(`/tv/${id}`),
+      tmdbFetch(`/tv/${id}/videos`)
+    ]);
+    const trailer = (videos.results || []).find(
+      (v: any) => v.type === "Trailer" && v.site === "YouTube"
+    );
+    return c.json({ ...details, trailer: trailer?.key });
+  } catch (error) {
+    console.error("TMDB TV error:", error);
+    return c.json({ error: "Failed to get TV show details" }, 500);
+  }
+});
+
+// Get TV season details with episodes
+app.get("/api/tmdb/tv/:id/season/:season", async (c) => {
+  const id = c.req.param("id");
+  const season = c.req.param("season");
+  try {
+    const data = await tmdbFetch(`/tv/${id}/season/${season}`);
+    return c.json(data);
+  } catch (error) {
+    console.error("TMDB season error:", error);
+    return c.json({ error: "Failed to get season details" }, 500);
   }
 });
 

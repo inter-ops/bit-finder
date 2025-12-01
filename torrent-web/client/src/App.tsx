@@ -4,9 +4,10 @@ import { TorrentList } from './components/TorrentList';
 import { FilterPanel } from './components/FilterPanel';
 import { Notification } from './components/Notification';
 import Downloads from './pages/Downloads';
+import Browse from './pages/Browse';
 import { Torrent, Filters } from './types';
 
-type Tab = 'search' | 'downloads';
+type Tab = 'browse' | 'search' | 'downloads';
 
 const DEFAULT_FILTERS: Filters = {
   categories: [],
@@ -20,7 +21,7 @@ const DEFAULT_FILTERS: Filters = {
 };
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('search');
+  const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [allTorrents, setAllTorrents] = useState<Torrent[]>([]);
   const [filteredTorrents, setFilteredTorrents] = useState<Torrent[]>([]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -251,6 +252,12 @@ export function App() {
             <h1>Torrent Search</h1>
             <nav class="tabs">
               <button 
+                class={`tab ${activeTab === 'browse' ? 'active' : ''}`}
+                onClick={() => setActiveTab('browse')}
+              >
+                Browse
+              </button>
+              <button 
                 class={`tab ${activeTab === 'search' ? 'active' : ''}`}
                 onClick={() => setActiveTab('search')}
               >
@@ -269,7 +276,8 @@ export function App() {
 
       <main class="main">
         <div class="container">
-          {activeTab === 'search' ? (
+          {activeTab === 'browse' && <Browse />}
+          {activeTab === 'search' && (
             <>
               <SearchBar onSearch={handleSearch} loading={loading} />
               
@@ -309,9 +317,8 @@ export function App() {
                 />
               )}
             </>
-          ) : (
-            <Downloads />
           )}
+          {activeTab === 'downloads' && <Downloads />}
         </div>
       </main>
 
