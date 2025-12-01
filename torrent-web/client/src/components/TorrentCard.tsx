@@ -143,45 +143,26 @@ export function TorrentCard({
         </div>
 
         <div class="torrent-stats">
-          <div class="stat">
-            <span class="stat-label">Seeds:</span>
-            <span class="stat-value seeds">
-              {seeds === null || seeds === undefined ? 'Missing' : (metadata.isYTSCapped && seeds === 100 ? '100+' : seeds)}
-            </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Peers:</span>
-            <span class="stat-value peers">
-              {peers === null || peers === undefined ? 'Missing' : (metadata.isYTSCapped && peers === 100 ? '100+' : peers)}
-            </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Size:</span>
-            <span class="stat-value">{size}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Provider:</span>
-            <span class="stat-value">{provider}</span>
-          </div>
-          {torrent.time && (() => {
-            const { relative, full } = formatRelativeTime(torrent.time);
-            return (
-              <div class="stat">
-                <span class="stat-label">Uploaded:</span>
-                <span class="stat-value" title={full}>{relative}</span>
-              </div>
-            );
-          })()}
+          <span class="stat"><span class="stat-value seeds">{seeds === null || seeds === undefined ? '–' : (metadata.isYTSCapped && seeds === 100 ? '100+' : seeds)}</span> seeds</span>
+          <span class="stat"><span class="stat-value peers">{peers === null || peers === undefined ? '–' : (metadata.isYTSCapped && peers === 100 ? '100+' : peers)}</span> peers</span>
+          <span class="stat">{size}</span>
+          <span class="stat">{provider}</span>
         </div>
       </div>
 
-      <div class="torrent-actions">
-        <button class="btn btn-secondary" onClick={onGetMagnet}>
-          Copy Magnet
-        </button>
-        <button class="btn btn-primary" onClick={onDownload}>
-          Download
-        </button>
+      <div class="torrent-footer">
+        <div class="torrent-actions">
+          <button class="btn btn-secondary" onClick={onGetMagnet}>
+            Copy Magnet
+          </button>
+          <button class="btn btn-primary" onClick={onDownload}>
+            Download
+          </button>
+        </div>
+        {torrent.time && (() => {
+          const { relative, full } = formatRelativeTime(torrent.time);
+          return <span class="torrent-time" title={full}>{relative}</span>;
+        })()}
       </div>
     </div>
   );
