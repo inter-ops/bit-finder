@@ -90,3 +90,34 @@ export async function getMagnet(torrentUrl: string): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Warmup the 1337x API - preload Cloudflare cookies
+ */
+export async function warmup(): Promise<{ status: string; message?: string }> {
+  try {
+    const response = await fetch(`${API_URL}/api/warmup`, {
+      method: "POST",
+      signal: AbortSignal.timeout(30000)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("[1337x] Warmup error:", error);
+    return { status: "error", message: "1337x API not available" };
+  }
+}
+
+/**
+ * Get 1337x API status
+ */
+export async function getStatus(): Promise<{ valid: boolean; message?: string }> {
+  try {
+    const response = await fetch(`${API_URL}/api/status`, {
+      signal: AbortSignal.timeout(2000)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("[1337x] Status error:", error);
+    return { valid: false, message: "1337x API not available" };
+  }
+}

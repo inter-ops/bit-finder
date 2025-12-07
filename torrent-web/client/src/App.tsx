@@ -276,19 +276,19 @@ export function App() {
       <header class="header">
         <div class="container">
           <div class="header-row">
-            <h1>Torrent Search</h1>
+            <h1>Torrent Finder</h1>
             <nav class="tabs">
               <button
                 class={`tab ${activeTab === "browse" ? "active" : ""}`}
                 onClick={() => setActiveTab("browse")}
               >
-                Browse
+                Browse Movies and TV Shows
               </button>
               <button
                 class={`tab ${activeTab === "search" ? "active" : ""}`}
                 onClick={() => setActiveTab("search")}
               >
-                Torrent Search
+                Direct Torrent Search
               </button>
               <button
                 class={`tab ${activeTab === "downloads" ? "active" : ""}`}

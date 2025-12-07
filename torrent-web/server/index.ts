@@ -152,28 +152,14 @@ app.get("/api/search", async (c) => {
 
 // 1337x API warmup - preload Cloudflare cookies
 app.post("/api/1337x/warmup", async (c) => {
-  try {
-    const response = await fetch("http://localhost:8000/api/warmup", {
-      method: "POST"
-    });
-    const data = await response.json();
-    return c.json(data);
-  } catch (error) {
-    // Silently fail - warmup is optional
-    console.error("1337x warmup error:", error);
-    return c.json({ status: "error", message: "1337x API not available" });
-  }
+  const data = await leet.warmup();
+  return c.json(data);
 });
 
 // 1337x API status
 app.get("/api/1337x/status", async (c) => {
-  try {
-    const response = await fetch("http://localhost:8000/api/status");
-    const data = await response.json();
-    return c.json(data);
-  } catch (error) {
-    return c.json({ valid: false, message: "1337x API not available" });
-  }
+  const data = await leet.getStatus();
+  return c.json(data);
 });
 
 // Get magnet link
