@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { search, getMagnet } from "../../src/services/torrent.js";
 import { parseTorrent } from "./torrentParser.js";
+import * as leet from "./1337xClient.js";
 import {
   addTorrent,
   getTorrents,
@@ -56,7 +57,7 @@ if (process.env.NODE_ENV === "production") {
   app.use("/*", serveStatic({ root: "./client/dist" }));
 }
 
-// Search torrents
+// Search torrents (combines results from torrent-search-api and 1337x)
 app.get("/api/search", async (c) => {
   const { name, limit } = c.req.query();
 
@@ -68,22 +69,46 @@ app.get("/api/search", async (c) => {
   const category = "all";
 
   try {
-    const results = await search(name, category, resultLimit);
+    // Fetch from both sources in parallel
+    const [standardResults, leetResults] = await Promise.all([
+      search(name, category, resultLimit).catch((err) => {
+        console.error("Standard search error:", err);
+        return [];
+      }),
+      leet.search(name, resultLimit).catch((err) => {
+        console.error("1337x search error:", err);
+        return [];
+      })
+    ]);
 
-    // Parse and enrich torrents with metadata, filtering out invalid ones
-    const parsedResults = results.map(parseTorrent).filter((t) => {
-      // Filter out invalid torrents (ThePirateBay returns id=0 when no results)
+    // Parse standard results
+    const parsedStandard = standardResults.map(parseTorrent).filter((t) => {
       if (t.raw?.id === 0 || t.raw?.id === "0") return false;
-      // Filter out torrents with no title
       if (!t.title || t.title === "Unknown") return false;
-      // Filter out torrents with invalid size
       if (t.size === "0 B") return false;
       return true;
     });
 
+    // Parse 1337x results (they're already in a similar format)
+    const parsed1337x = leetResults.map((t) =>
+      parseTorrent({
+        title: t.title,
+        seeds: t.seeds,
+        peers: t.peers,
+        size: t.size,
+        time: t.time,
+        desc: t.desc,
+        provider: "1337x"
+      })
+    );
+
+    // Combine all results
+    const allResults = [...parsedStandard, ...parsed1337x];
+
     // Sort by seeds (highest first)
-    parsedResults.sort((a, b) => b.seeds - a.seeds);
-    return c.json({ results: parsedResults });
+    allResults.sort((a, b) => b.seeds - a.seeds);
+
+    return c.json({ results: allResults });
   } catch (error) {
     console.error("Search error:", error);
     return c.json({ error: "Failed to search torrents" }, 500);
@@ -95,7 +120,23 @@ app.post("/api/magnet", async (c) => {
   const torrent = await c.req.json();
 
   try {
-    const magnet = await getMagnet(torrent);
+    let magnet: string | null = null;
+
+    // Handle 1337x torrents differently - use the Python API
+    if (torrent.provider === "1337x") {
+      const torrentUrl = torrent.desc || torrent.link;
+      if (!torrentUrl) {
+        return c.json({ error: "Missing torrent URL" }, 400);
+      }
+      magnet = await leet.getMagnet(torrentUrl);
+      if (!magnet) {
+        return c.json({ error: "Failed to get magnet from 1337x" }, 500);
+      }
+    } else {
+      // Standard providers - use torrent-search-api
+      magnet = await getMagnet(torrent);
+    }
+
     return c.json({ magnet });
   } catch (error) {
     console.error("Magnet error:", error);

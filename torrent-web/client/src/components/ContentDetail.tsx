@@ -13,11 +13,12 @@ interface ContentDetailProps {
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
 
-const RESOLUTIONS = ["4K", "1080p", "720p", "480p"];
+const RESOLUTIONS = ["8K", "4K", "1080p", "720p", "480p"];
 const VIDEO_CODECS = ["AV1", "H.265", "H.264", "XviD"];
 const AUDIO_CODECS = ["Dolby Atmos", "TrueHD", "DTS-HD", "DTS-X", "DTS", "AC3", "AAC"];
 const SOURCES = ["BluRay", "WEB-DL", "WEBRip", "HDTV"];
 const HDR_OPTIONS = ["Dolby Vision", "HDR10+", "HDR10"];
+const PROVIDERS = ["1337x", "ThePirateBay", "Rarbg", "Yts", "Eztv", "TorrentProject"];
 
 const defaultFilters: Filters = {
   categories: [],
@@ -466,6 +467,7 @@ export function ContentDetail({
   };
 
   const hasActiveFilters =
+    filters.providers.length > 0 ||
     filters.resolutions.length > 0 ||
     filters.videoCodecs.length > 0 ||
     filters.audioCodecs.length > 0 ||
@@ -475,6 +477,12 @@ export function ContentDetail({
   // Filter torrents
   const filteredTorrents = useMemo(() => {
     return torrents.filter((torrent) => {
+      if (
+        filters.providers.length > 0 &&
+        !filters.providers.includes(torrent.provider || "")
+      ) {
+        return false;
+      }
       if (
         filters.resolutions.length > 0 &&
         !filters.resolutions.includes(torrent.metadata.resolution || "")
@@ -725,6 +733,21 @@ export function ContentDetail({
                           onClick={() => toggleFilter("resolutions", res)}
                         >
                           {res}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div class="filter-group">
+                    <span class="filter-label">Provider:</span>
+                    <div class="filter-chips">
+                      {PROVIDERS.map((provider) => (
+                        <button
+                          key={provider}
+                          class={`filter-chip ${filters.providers.includes(provider) ? "active" : ""}`}
+                          onClick={() => toggleFilter("providers", provider)}
+                        >
+                          {provider}
                         </button>
                       ))}
                     </div>

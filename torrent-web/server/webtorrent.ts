@@ -3,6 +3,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
+// TODO: automatically connect to vpn with new ip so we never use same location or risk not being on vpn
+
 // Configuration - resolve ~ to home directory
 const rawDownloadPath = process.env.DOWNLOAD_PATH || "~/Downloads";
 const DOWNLOAD_PATH = rawDownloadPath.startsWith("~")
