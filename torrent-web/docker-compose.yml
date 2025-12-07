@@ -1,0 +1,41 @@
+services:
+  # Python 1337x API with Cloudflare bypass
+  leet-api:
+    build:
+      context: ./1337x-search
+      dockerfile: Dockerfile
+    container_name: leet-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist cookie cache between restarts
+      - leet-cache:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # Chrome needs more shared memory
+    shm_size: '2gb'
+
+  # Node.js Torrent Web App
+  torrent-web:
+    build:
+      # Context is parent dir because server imports from root src/
+      context: ..
+      dockerfile: torrent-web/Dockerfile
+    container_name: torrent-web
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist downloads
+      - downloads:/downloads
+    environment:
+      - NODE_ENV=production
+      - LEET_API_URL=http://leet-api:8000
+      - DOWNLOAD_PATH=/downloads
+    depends_on:
+      - leet-api
+    restart: unless-stopped
+
+volumes:
+  leet-cache:
+  downloads:

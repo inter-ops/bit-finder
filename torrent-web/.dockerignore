@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+**/node_modules
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.Python
+*.so
+.eggs/
+*.egg-info/
+.venv
+venv/
+
+# Build outputs
+dist/
+**/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+1337x-search/test_*.py
+1337x-search/scrape_1337x.py
+1337x-search/error-logs/
+1337x-search/error_logs/
+
+# Cache
+1337x-search/cookie_cache.json
+*.log
+
+# Docker (don't include in context)
+docker-compose.yml
+.dockerignore
+
+# Example site not needed
+example-site/
+
+# Test scripts not needed
+test-scripts/

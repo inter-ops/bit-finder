@@ -195,14 +195,21 @@ export function ContentDetail({
     fetchSeason();
   }, [selectedSeason, content.id, isTV]);
 
-  const searchTorrents = async (query: string) => {
+  const searchTorrents = async (query: string, selectedProviders?: string[]) => {
     setLoadingTorrents(true);
     setSearchQuery(query);
     setTorrents([]);
-    setFilters(defaultFilters);
+    // Only reset non-provider filters when it's a new search (no providers passed)
+    if (!selectedProviders) {
+      setFilters(defaultFilters);
+    }
 
     try {
-      const response = await fetch(`/api/search?name=${encodeURIComponent(query)}&limit=50`);
+      let url = `/api/search?name=${encodeURIComponent(query)}&limit=50`;
+      if (selectedProviders && selectedProviders.length > 0) {
+        url += `&providers=${selectedProviders.join(",")}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       if (response.ok) {
         setTorrents(data.results || []);
@@ -459,11 +466,24 @@ export function ContentDetail({
     const updated = current.includes(value)
       ? current.filter((v) => v !== value)
       : [...current, value];
-    setFilters({ ...filters, [category]: updated });
+    
+    // If toggling providers, trigger a new search with the updated providers
+    if (category === "providers" && searchQuery) {
+      setFilters({ ...filters, [category]: updated });
+      // Pass undefined for providers to search all if empty, otherwise pass the updated list
+      searchTorrents(searchQuery, updated.length > 0 ? updated : undefined);
+    } else {
+      setFilters({ ...filters, [category]: updated });
+    }
   };
 
   const clearFilters = () => {
+    const hadProviders = filters.providers.length > 0;
     setFilters(defaultFilters);
+    // If we had provider filters, re-fetch all results
+    if (hadProviders && searchQuery) {
+      searchTorrents(searchQuery);
+    }
   };
 
   const hasActiveFilters =
@@ -474,15 +494,10 @@ export function ContentDetail({
     filters.sources.length > 0 ||
     filters.hdr.length > 0;
 
-  // Filter torrents
+  // Filter torrents (providers are handled by API, other filters are client-side)
   const filteredTorrents = useMemo(() => {
     return torrents.filter((torrent) => {
-      if (
-        filters.providers.length > 0 &&
-        !filters.providers.includes(torrent.provider || "")
-      ) {
-        return false;
-      }
+      // Note: Provider filtering is now done server-side via API
       if (
         filters.resolutions.length > 0 &&
         !filters.resolutions.includes(torrent.metadata.resolution || "")

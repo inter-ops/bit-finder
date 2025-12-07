@@ -28,6 +28,18 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState<string>("");
   const [lastLimit, setLastLimit] = useState<number>(50);
+
+  // Warmup 1337x API on app load (preload Cloudflare cookies)
+  useEffect(() => {
+    fetch("/api/1337x/warmup", { method: "POST" })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("[1337x] Warmup:", data.message);
+      })
+      .catch(() => {
+        // Silently ignore warmup errors - it will retry on first search
+      });
+  }, []);
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error";

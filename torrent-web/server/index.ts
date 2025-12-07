@@ -57,9 +57,12 @@ if (process.env.NODE_ENV === "production") {
   app.use("/*", serveStatic({ root: "./client/dist" }));
 }
 
+// Available providers for standard search (torrent-search-api)
+const STANDARD_PROVIDERS = ["ThePirateBay", "TorrentProject", "Eztv", "Rarbg", "Yts"];
+
 // Search torrents (combines results from torrent-search-api and 1337x)
 app.get("/api/search", async (c) => {
-  const { name, limit } = c.req.query();
+  const { name, limit, providers } = c.req.query();
 
   if (!name) {
     return c.json({ error: "Name parameter is required" }, 400);
@@ -68,26 +71,54 @@ app.get("/api/search", async (c) => {
   const resultLimit = limit ? parseInt(limit) : 50;
   const category = "all";
 
-  try {
-    // Fetch from both sources in parallel
-    const [standardResults, leetResults] = await Promise.all([
-      search(name, category, resultLimit).catch((err) => {
-        console.error("Standard search error:", err);
-        return [];
-      }),
-      leet.search(name, resultLimit).catch((err) => {
-        console.error("1337x search error:", err);
-        return [];
-      })
-    ]);
+  // Parse providers filter
+  const selectedProviders = providers ? providers.split(",").map((p) => p.trim()) : null;
 
-    // Parse standard results
-    const parsedStandard = standardResults.map(parseTorrent).filter((t) => {
+  // Determine which sources to search
+  const search1337x = !selectedProviders || selectedProviders.includes("1337x");
+  const searchStandard =
+    !selectedProviders || selectedProviders.some((p) => STANDARD_PROVIDERS.includes(p));
+
+  try {
+    // Build promises based on selected providers
+    const promises: Promise<any>[] = [];
+
+    if (searchStandard) {
+      promises.push(
+        search(name, category, resultLimit).catch((err) => {
+          console.error("Standard search error:", err);
+          return [];
+        })
+      );
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+
+    if (search1337x) {
+      promises.push(
+        leet.search(name, resultLimit).catch((err) => {
+          console.error("1337x search error:", err);
+          return [];
+        })
+      );
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+
+    const [standardResults, leetResults] = await Promise.all(promises);
+
+    // Parse standard results and filter by selected providers if needed
+    let parsedStandard = standardResults.map(parseTorrent).filter((t) => {
       if (t.raw?.id === 0 || t.raw?.id === "0") return false;
       if (!t.title || t.title === "Unknown") return false;
       if (t.size === "0 B") return false;
       return true;
     });
+
+    // If specific providers are selected, filter standard results
+    if (selectedProviders && selectedProviders.length > 0) {
+      parsedStandard = parsedStandard.filter((t) => selectedProviders.includes(t.provider));
+    }
 
     // Parse 1337x results (they're already in a similar format)
     const parsed1337x = leetResults.map((t) =>
@@ -105,13 +136,43 @@ app.get("/api/search", async (c) => {
     // Combine all results
     const allResults = [...parsedStandard, ...parsed1337x];
 
-    // Sort by seeds (highest first)
-    allResults.sort((a, b) => b.seeds - a.seeds);
+    // Sort by seeds (highest first) - ensure numeric comparison
+    allResults.sort((a, b) => {
+      const seedsA = typeof a.seeds === "number" ? a.seeds : parseInt(String(a.seeds)) || 0;
+      const seedsB = typeof b.seeds === "number" ? b.seeds : parseInt(String(b.seeds)) || 0;
+      return seedsB - seedsA;
+    });
 
     return c.json({ results: allResults });
   } catch (error) {
     console.error("Search error:", error);
     return c.json({ error: "Failed to search torrents" }, 500);
+  }
+});
+
+// 1337x API warmup - preload Cloudflare cookies
+app.post("/api/1337x/warmup", async (c) => {
+  try {
+    const response = await fetch("http://localhost:8000/api/warmup", {
+      method: "POST"
+    });
+    const data = await response.json();
+    return c.json(data);
+  } catch (error) {
+    // Silently fail - warmup is optional
+    console.error("1337x warmup error:", error);
+    return c.json({ status: "error", message: "1337x API not available" });
+  }
+});
+
+// 1337x API status
+app.get("/api/1337x/status", async (c) => {
+  try {
+    const response = await fetch("http://localhost:8000/api/status");
+    const data = await response.json();
+    return c.json(data);
+  } catch (error) {
+    return c.json({ valid: false, message: "1337x API not available" });
   }
 });
 
