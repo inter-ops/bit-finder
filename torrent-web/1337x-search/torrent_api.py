@@ -125,13 +125,17 @@ cache = CookieCache()
 def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
     """Open browser, bypass Cloudflare, return cookies"""
     print("[1337x] Opening browser to get Cloudflare cookies...")
-    driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
-    
-    cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
-    user_agent = driver.run_js("return navigator.userAgent")
-    
-    print(f"[1337x] Got cookies: {list(cookies.keys())}")
-    return {"cookies": cookies, "user_agent": user_agent}
+    try:
+        driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
+        
+        cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
+        user_agent = driver.run_js("return navigator.userAgent")
+        
+        print(f"[1337x] Got cookies: {list(cookies.keys())}")
+        return {"cookies": cookies, "user_agent": user_agent}
+    except Exception as e:
+        print(f"[1337x] Browser error: {e}")
+        raise
 
 
 def fetch_cookies_safe() -> bool:
