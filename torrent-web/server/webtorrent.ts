@@ -30,6 +30,12 @@ interface TorrentState {
   paused: boolean;
   addedAt: number;
   done: boolean;
+  // Metadata for matching torrents across browsers
+  metadata?: {
+    title: string;
+    provider?: string;
+    size?: string;
+  };
 }
 
 interface PersistedState {
@@ -51,6 +57,9 @@ function loadState(): PersistedState {
   return { torrents: {} };
 }
 
+// Store metadata for each torrent (by infoHash)
+const torrentMetadata: Record<string, { title: string; provider?: string; size?: string }> = {};
+
 function saveState() {
   try {
     const state: PersistedState = { torrents: {} };
@@ -60,7 +69,8 @@ function saveState() {
         magnetURI: torrent.magnetURI,
         paused: torrent.paused,
         addedAt: Date.now(),
-        done: torrent.done
+        done: torrent.done,
+        metadata: torrentMetadata[torrent.infoHash]
       };
     });
 
@@ -73,12 +83,16 @@ function saveState() {
 // Restore torrents on startup
 async function restoreTorrents() {
   const state = loadState();
-  const magnetURIs = Object.values(state.torrents);
 
-  console.log(`Restoring ${magnetURIs.length} torrents...`);
+  console.log(`Restoring ${Object.keys(state.torrents).length} torrents...`);
 
-  for (const torrentState of magnetURIs) {
+  for (const [infoHash, torrentState] of Object.entries(state.torrents)) {
     try {
+      // Restore metadata if available
+      if (torrentState.metadata) {
+        torrentMetadata[infoHash] = torrentState.metadata;
+      }
+
       // If torrent was complete, pause it after adding to prevent re-verification/seeding
       const shouldPause = torrentState.paused || torrentState.done;
       await addTorrent(torrentState.magnetURI, {
@@ -155,7 +169,11 @@ function formatTorrentInfo(torrent: WebTorrent.Torrent): TorrentInfo {
 // Add a torrent
 export async function addTorrent(
   magnetURI: string,
-  options: { paused?: boolean; wasComplete?: boolean } = {}
+  options: {
+    paused?: boolean;
+    wasComplete?: boolean;
+    metadata?: { title: string; provider?: string; size?: string };
+  } = {}
 ): Promise<TorrentInfo> {
   console.log("Adding torrent");
 
@@ -163,6 +181,11 @@ export async function addTorrent(
   const existing = await client.get(magnetURI);
   if (existing) {
     console.log("Torrent already added:", existing);
+    // Update metadata if provided
+    if (options.metadata) {
+      torrentMetadata[existing.infoHash] = options.metadata;
+      saveState();
+    }
     return formatTorrentInfo(existing);
   }
 
@@ -175,6 +198,14 @@ export async function addTorrent(
 
     torrent.on("ready", () => {
       console.log(`Torrent ready: ${torrent.name}`);
+
+      // Store metadata if provided
+      if (options.metadata) {
+        torrentMetadata[torrent.infoHash] = options.metadata;
+      } else {
+        // Store name as fallback metadata
+        torrentMetadata[torrent.infoHash] = { title: torrent.name || "Unknown" };
+      }
 
       // If should be paused (either explicitly or was complete), pause it
       if (options.paused || options.wasComplete) {
@@ -301,6 +332,67 @@ export function getFileByIndex(infoHash: string, fileIndex: number): WebTorrent.
     return null;
   }
   return torrent.files[fileIndex];
+}
+
+/**
+ * Match a torrent by metadata (title, provider, size)
+ * Returns the matching TorrentInfo if found
+ */
+export function findTorrentByMetadata(metadata: {
+  title: string;
+  provider?: string;
+  size?: string;
+}): TorrentInfo | null {
+  // Try to find by exact title match first
+  for (const torrent of client.torrents) {
+    const storedMetadata = torrentMetadata[torrent.infoHash];
+    if (!storedMetadata) continue;
+
+    // Exact title match
+    if (storedMetadata.title === metadata.title) {
+      // If provider is specified, check it matches
+      if (metadata.provider && storedMetadata.provider !== metadata.provider) {
+        continue;
+      }
+      // If size is specified, check it matches
+      if (metadata.size && storedMetadata.size !== metadata.size) {
+        continue;
+      }
+      return formatTorrentInfo(torrent);
+    }
+
+    // Fallback: check if torrent name contains the search title
+    const torrentName = torrent.name || "";
+    if (torrentName.includes(metadata.title) || metadata.title.includes(torrentName)) {
+      if (metadata.provider && storedMetadata.provider !== metadata.provider) {
+        continue;
+      }
+      return formatTorrentInfo(torrent);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get download state for multiple torrents by metadata
+ */
+export function getDownloadStatesForTorrents(
+  torrents: Array<{ title: string; provider?: string; size?: string }>
+): Record<string, TorrentInfo> {
+  const states: Record<string, string> = {}; // title -> infoHash
+  const result: Record<string, TorrentInfo> = {};
+
+  for (const torrent of torrents) {
+    const match = findTorrentByMetadata(torrent);
+    if (match) {
+      // Use title as key for matching
+      states[torrent.title] = match.infoHash;
+      result[torrent.title] = match;
+    }
+  }
+
+  return result;
 }
 
 // Export client for advanced usage

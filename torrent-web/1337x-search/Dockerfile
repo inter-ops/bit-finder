@@ -28,6 +28,7 @@ RUN apt-get update && \
     xdg-utils \
     libu2f-udev \
     libvulkan1 \
+    xvfb \
     curl \
     unzip \
     && rm -rf /var/lib/apt/lists/*

@@ -14,7 +14,8 @@ import {
   resumeTorrent,
   removeTorrent,
   getFileByIndex,
-  getVideoFile
+  getVideoFile,
+  getDownloadStatesForTorrents
 } from "./webtorrent.js";
 
 const app = new Hono();
@@ -143,7 +144,34 @@ app.get("/api/search", async (c) => {
       return seedsB - seedsA;
     });
 
-    return c.json({ results: allResults });
+    // Get download states for all torrents
+    const downloadStates = getDownloadStatesForTorrents(
+      allResults.map((t) => ({
+        title: t.title,
+        provider: t.provider,
+        size: t.size
+      }))
+    );
+
+    // Attach download state to each result
+    const resultsWithState = allResults.map((torrent) => {
+      const state = downloadStates[torrent.title];
+      if (state) {
+        return {
+          ...torrent,
+          downloadState: {
+            infoHash: state.infoHash,
+            progress: Math.round(state.progress * 100),
+            isDownloading: !state.done && !state.paused,
+            isComplete: state.done,
+            isPaused: state.paused && !state.done
+          }
+        };
+      }
+      return torrent;
+    });
+
+    return c.json({ results: resultsWithState });
   } catch (error) {
     console.error("Search error:", error);
     return c.json({ error: "Failed to search torrents" }, 500);
@@ -195,13 +223,13 @@ app.post("/api/magnet", async (c) => {
 // Download torrent (add to WebTorrent)
 app.post("/api/download", async (c) => {
   try {
-    const { magnet } = await c.req.json();
+    const { magnet, metadata } = await c.req.json();
 
     if (!magnet) {
       return c.json({ error: "Magnet parameter is required" }, 400);
     }
 
-    const torrent = await addTorrent(magnet);
+    const torrent = await addTorrent(magnet, { metadata });
     return c.json({ success: true, message: "Torrent added successfully", torrent });
   } catch (error) {
     console.error("Download error:", error);

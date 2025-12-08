@@ -57,16 +57,6 @@ export function ContentDetail({
   const [showTrailer, setShowTrailer] = useState(false);
   const [downloadingTorrents, setDownloadingTorrents] = useState<Set<string>>(new Set());
   const [activeTorrents, setActiveTorrents] = useState<WebTorrentInfo[]>([]);
-  // Map of torrent raw ID -> infoHash (populated when we download)
-  const [torrentInfoHashMap, setTorrentInfoHashMap] = useState<Record<string, string>>(() => {
-    // Load from localStorage on init
-    try {
-      const saved = localStorage.getItem('torrent-infohash-map');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
   const [streamingTorrent, setStreamingTorrent] = useState<{infoHash: string; fileIndex?: number} | null>(null);
   const [streamReady, setStreamReady] = useState<Record<string, boolean>>({});
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -256,21 +246,15 @@ export function ContentDetail({
     }
   };
 
-  // Check if a torrent is already downloading - by info hash or title
+  // Check if a torrent is already downloading - use server-provided state or active torrents
   const isAlreadyDownloading = (torrent: Torrent): WebTorrentInfo | undefined => {
-    const torrentId = torrent.raw?.id || torrent.title;
-    const searchTitle = torrent.title;
-    
-    // First check if we have a stored info hash mapping for this torrent
-    const storedInfoHash = torrentInfoHashMap[torrentId];
-    if (storedInfoHash) {
-      const match = activeTorrents.find(t => t.infoHash === storedInfoHash);
-      if (match) return match;
+    // First check if server provided download state
+    if (torrent.downloadState) {
+      return activeTorrents.find(t => t.infoHash === torrent.downloadState!.infoHash);
     }
     
-    // Fallback: title matching
-    // - Exact match, OR
-    // - Search title is contained in download name (e.g., YTS adds "[5.1] [YTS.MX]" suffix)
+    // Fallback: title matching with active torrents
+    const searchTitle = torrent.title;
     return activeTorrents.find(t => {
       const downloadName = t.name || '';
       return downloadName === searchTitle || downloadName.startsWith(searchTitle);
@@ -285,9 +269,19 @@ export function ContentDetail({
     progress: number;
     infoHash?: string;
   } => {
-    const torrentId = torrent.raw?.id || torrent.title;
-    const activeTorrent = isAlreadyDownloading(torrent);
+    // Use server-provided download state if available
+    if (torrent.downloadState) {
+      return {
+        isDownloading: torrent.downloadState.isDownloading,
+        isComplete: torrent.downloadState.isComplete,
+        isPaused: torrent.downloadState.isPaused,
+        progress: torrent.downloadState.progress,
+        infoHash: torrent.downloadState.infoHash
+      };
+    }
     
+    // Fallback to active torrents matching
+    const activeTorrent = isAlreadyDownloading(torrent);
     if (activeTorrent) {
       return {
         isDownloading: !activeTorrent.done && !activeTorrent.paused,
@@ -299,6 +293,7 @@ export function ContentDetail({
     }
     
     // Just clicked in this session but not yet in active torrents
+    const torrentId = torrent.raw?.id || torrent.title;
     if (downloadingTorrents.has(torrentId)) {
       return { isDownloading: true, isComplete: false, isPaused: false, progress: 0 };
     }
@@ -343,8 +338,9 @@ export function ContentDetail({
     const torrentId = torrent.raw?.id || torrent.title;
 
     // If already downloading, navigate to downloads page
-    if (downloadingTorrents.has(torrentId)) {
-      onNavigateToDownloads?.();
+    const state = getTorrentDownloadState(torrent);
+    if (state.isDownloading || state.isComplete || state.isPaused) {
+      onNavigateToDownloads?.(state.infoHash);
       return;
     }
 
@@ -360,23 +356,36 @@ export function ContentDetail({
         return;
       }
 
+      // Send metadata with download request so server can match it later
       const downloadResponse = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ magnet: magnetData.magnet })
+        body: JSON.stringify({ 
+          magnet: magnetData.magnet,
+          metadata: {
+            title: torrent.title,
+            provider: torrent.provider,
+            size: torrent.size
+          }
+        })
       });
       const downloadData = await downloadResponse.json();
       if (downloadResponse.ok) {
         // Mark as downloading
         setDownloadingTorrents((prev) => new Set(prev).add(torrentId));
         
-        // Store the info hash mapping for robust matching (using infoHash from server response)
-        const infoHash = downloadData.torrent?.infoHash;
-        if (infoHash) {
-          const newMap = { ...torrentInfoHashMap, [torrentId]: infoHash };
-          setTorrentInfoHashMap(newMap);
-          localStorage.setItem('torrent-infohash-map', JSON.stringify(newMap));
-        }
+        // Update torrent with download state
+        setTorrents(prev => prev.map(t => 
+          t.title === torrent.title 
+            ? { ...t, downloadState: {
+                infoHash: downloadData.torrent.infoHash,
+                progress: 0,
+                isDownloading: true,
+                isComplete: false,
+                isPaused: false
+              }}
+            : t
+        ));
         
         onNotify("Torrent added!", "success");
       } else {

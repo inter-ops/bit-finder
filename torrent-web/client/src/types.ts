@@ -25,6 +25,13 @@ export interface Torrent {
   category: "Movie" | "TV" | "Other";
   metadata: TorrentMetadata;
   raw: any;
+  downloadState?: {
+    infoHash: string;
+    progress: number;
+    isDownloading: boolean;
+    isComplete: boolean;
+    isPaused: boolean;
+  };
 }
 
 export interface Filters {

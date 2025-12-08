@@ -125,17 +125,13 @@ cache = CookieCache()
 def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
     """Open browser, bypass Cloudflare, return cookies"""
     print("[1337x] Opening browser to get Cloudflare cookies...")
-    try:
-        driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
-        
-        cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
-        user_agent = driver.run_js("return navigator.userAgent")
-        
-        print(f"[1337x] Got cookies: {list(cookies.keys())}")
-        return {"cookies": cookies, "user_agent": user_agent}
-    except Exception as e:
-        print(f"[1337x] Browser error: {e}")
-        raise
+    driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
+    
+    cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
+    user_agent = driver.run_js("return navigator.userAgent")
+    
+    print(f"[1337x] Got cookies: {list(cookies.keys())}")
+    return {"cookies": cookies, "user_agent": user_agent}
 
 
 def fetch_cookies_safe() -> bool:
@@ -155,11 +151,17 @@ def fetch_cookies_safe() -> bool:
     
     try:
         result = _fetch_cookies_browser()
-        cache.update(result["cookies"], result["user_agent"])
-        return True
+        if result and isinstance(result, dict) and "cookies" in result and "user_agent" in result:
+            cache.update(result["cookies"], result["user_agent"])
+            return True
+        else:
+            raise Exception("Invalid result from browser function")
     except Exception as e:
         log_error("Failed to fetch cookies", e)
         print(f"[1337x] Cookie fetch failed: {e}")
+        cache.cookies = {}
+        cache.user_agent = ""
+        cache.fetched_at = 0
         return False
     finally:
         with cache._lock:
@@ -336,13 +338,20 @@ async def status():
 async def search(query: str = Query(..., min_length=2), limit: int = Query(50)):
     """Search 1337x.to"""
     try:
+        # Ensure cookies are available before attempting search
+        if not ensure_cookies():
+            print(f"[1337x] Search failed: Could not get Cloudflare cookies")
+            return SearchResponse(torrents=[], error="Failed to bypass Cloudflare. Please try again later.")
+        
         url = f"https://1337x.to/search/{query.replace(' ', '+')}/1/"
         html = fetch(url)
         torrents = parse_search(html)
         return SearchResponse(torrents=[Torrent(**t) for t in torrents[:limit]])
     except Exception as e:
         log_error(f"Search failed for query: {query}", e)
-        raise HTTPException(500, str(e))
+        error_msg = str(e)
+        # Return empty results instead of 500 error - 1337x is optional
+        return SearchResponse(torrents=[], error=f"Search failed: {error_msg}")
 
 
 @app.get("/api/magnet", response_model=MagnetResponse)
