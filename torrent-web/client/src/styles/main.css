@@ -903,6 +903,20 @@ a.torrent-title:hover {
   color: var(--accent-orange);
 }
 
+/* Browse Page */
+.browse-page {
+  width: 100%;
+}
+
+.loading-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 /* Content Detail Page */
 .content-detail {
   max-width: 1000px;
@@ -1476,4 +1490,132 @@ a.torrent-title:hover {
     top: -35px;
     font-size: 20px;
   }
+}
+
+/* ========================================
+   Cloudflare Status Badge (Persistent)
+   ======================================== */
+
+.cf-badge {
+  position: fixed;
+  top: 50px; /* Below header to not overlap nav */
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  z-index: 999; /* Below modals (1000) so it gets blacked out */
+  transition: all 0.2s ease;
+  cursor: help;
+}
+
+.cf-badge-dot {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.cf-badge-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.cf-badge-spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--border-color);
+  border-top-color: var(--accent-orange);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.cf-badge-retry {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 2px;
+  margin-left: 2px;
+  transition: color 0.15s;
+}
+
+.cf-badge-retry:hover {
+  color: var(--text-primary);
+}
+
+/* States */
+.cf-badge-ready {
+  border-color: rgba(24, 190, 148, 0.4);
+}
+
+.cf-badge-ready .cf-badge-dot {
+  color: var(--accent-green);
+}
+
+.cf-badge-ready .cf-badge-label {
+  color: var(--accent-green);
+}
+
+.cf-badge-warming {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.cf-badge-warming .cf-badge-label {
+  color: var(--accent-orange);
+}
+
+.cf-badge-error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.cf-badge-error .cf-badge-dot {
+  color: var(--accent-red);
+}
+
+.cf-badge-error .cf-badge-label {
+  color: var(--accent-red);
+}
+
+.cf-badge-idle {
+  border-color: var(--border-color);
+}
+
+.cf-badge-idle .cf-badge-dot {
+  color: var(--text-muted);
+}
+
+/* Tooltip */
+.cf-badge-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-line;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+.cf-badge-tooltip::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  transform: rotate(45deg);
 }

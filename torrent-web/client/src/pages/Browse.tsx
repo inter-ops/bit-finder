@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "preact/hooks";
+import { useState, useRef, useEffect, useCallback } from "preact/hooks";
 import { ContentSearch } from "../components/ContentSearch";
 import { ContentDetail } from "../components/ContentDetail";
 import { Notification } from "../components/Notification";
@@ -67,9 +67,10 @@ const getUrlParams = () => {
   };
 };
 
-// Helper to update URL params
-const updateUrl = (query?: string, content?: TMDBResult | null) => {
+// Helper to build URL with params
+const buildUrl = (query?: string, content?: TMDBResult | null) => {
   const params = new URLSearchParams();
+  const basePath = window.location.pathname.startsWith('/browse') ? '/browse' : '/';
   
   if (query) {
     params.set('q', query);
@@ -80,57 +81,37 @@ const updateUrl = (query?: string, content?: TMDBResult | null) => {
     params.set('type', content.media_type);
   }
   
-  const newUrl = params.toString() 
-    ? `${window.location.pathname}?${params.toString()}`
-    : window.location.pathname;
-    
-  window.history.replaceState({}, '', newUrl);
+  return params.toString() ? `${basePath}?${params.toString()}` : basePath;
 };
 
 export default function Browse({ onNavigateToDownloads }: BrowseProps) {
+  // Parse URL params immediately for initial state
+  const initialParams = getUrlParams();
+  
   const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
+  // Initialize selectedContent to a "loading" placeholder if we have an ID in URL
   const [selectedContent, setSelectedContent] = useState<TMDBResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  
+  // Track if we're loading content from URL (to show loading state instead of search)
+  const [loadingFromUrl, setLoadingFromUrl] = useState(
+    !!(initialParams.contentId && initialParams.mediaType)
+  );
 
-  // Store the last search query to restore results when going back
-  const lastSearchQuery = useRef<string>("");
+  const lastSearchQuery = useRef<string>(initialParams.query);
 
-  // Restore state from URL on initial load
-  useEffect(() => {
-    const { query, contentId, mediaType } = getUrlParams();
-    
-    if (query) {
-      lastSearchQuery.current = query;
-      handleSearch(query, false).then(() => {
-        // If there's a content ID, find and select it after search completes
-        if (contentId && mediaType) {
-          // We'll try to find it in results or fetch it directly
-          fetchAndSelectContent(contentId, mediaType);
-        }
-        setInitialLoadDone(true);
-      });
-    } else if (contentId && mediaType) {
-      // Just have content ID, fetch it directly
-      fetchAndSelectContent(contentId, mediaType);
-      setInitialLoadDone(true);
-    } else {
-      setInitialLoadDone(true);
-    }
-  }, []);
-
-  const fetchAndSelectContent = async (id: number, type: 'movie' | 'tv') => {
+  // Fetch content by ID
+  const fetchAndSelectContent = useCallback(async (id: number, type: 'movie' | 'tv') => {
     try {
       const endpoint = type === 'tv' ? `/api/tmdb/tv/${id}` : `/api/tmdb/movie/${id}`;
       const response = await fetch(endpoint);
       const data = await response.json();
       
       if (response.ok && data.id) {
-        // Create a TMDBResult from the fetched data
         const content: TMDBResult = {
           id: data.id,
           media_type: type,
@@ -144,21 +125,82 @@ export default function Browse({ onNavigateToDownloads }: BrowseProps) {
           first_air_date: data.first_air_date
         };
         setSelectedContent(content);
+        return content;
       }
     } catch (error) {
       console.error("Failed to fetch content:", error);
     }
-  };
+    return null;
+  }, []);
 
-  const handleSearch = async (query: string, updateUrlState: boolean = true) => {
+  // Restore state from URL on initial load
+  useEffect(() => {
+    const { query, contentId, mediaType } = initialParams;
+    
+    const loadInitialState = async () => {
+      // If we have a content ID, fetch it first (before showing search results)
+      if (contentId && mediaType) {
+        await fetchAndSelectContent(contentId, mediaType);
+        
+        // Load search results in background (without clearing selection)
+        if (query) {
+          lastSearchQuery.current = query;
+          await handleSearch(query, false, false); // Don't clear selection
+        }
+      } else if (query) {
+        // Just search, no content to show
+        lastSearchQuery.current = query;
+        await handleSearch(query, false, true);
+      }
+      
+      setLoadingFromUrl(false);
+    };
+
+    loadInitialState();
+  }, []); // Only run on mount
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const { query, contentId, mediaType } = getUrlParams();
+      
+      if (contentId && mediaType) {
+        // Try to find in existing results first
+        const existingContent = searchResults.find(
+          r => r.id === contentId && r.media_type === mediaType
+        );
+        if (existingContent) {
+          setSelectedContent(existingContent);
+        } else {
+          fetchAndSelectContent(contentId, mediaType);
+        }
+      } else {
+        setSelectedContent(null);
+      }
+      
+      // Update search query if changed
+      if (query && query !== lastSearchQuery.current) {
+        lastSearchQuery.current = query;
+        handleSearch(query, false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [searchResults, fetchAndSelectContent]);
+
+  const handleSearch = async (query: string, pushHistory: boolean = true, clearSelection: boolean = true) => {
     if (!query.trim()) return;
 
     setLoading(true);
-    setSelectedContent(null);
+    if (clearSelection) {
+      setSelectedContent(null);
+    }
     lastSearchQuery.current = query;
     
-    if (updateUrlState) {
-      updateUrl(query, null);
+    if (pushHistory) {
+      const newUrl = buildUrl(query, null);
+      window.history.pushState({ query }, "", newUrl);
     }
 
     try {
@@ -184,15 +226,31 @@ export default function Browse({ onNavigateToDownloads }: BrowseProps) {
 
   const handleSelectContent = (content: TMDBResult) => {
     setSelectedContent(content);
-    updateUrl(lastSearchQuery.current, content);
-    // Don't clear search results - keep them for when user goes back
+    const newUrl = buildUrl(lastSearchQuery.current, content);
+    window.history.pushState({ query: lastSearchQuery.current, content: { id: content.id, type: content.media_type } }, "", newUrl);
   };
 
   const handleBack = () => {
-    setSelectedContent(null);
-    updateUrl(lastSearchQuery.current, null);
-    // Search results are already preserved
+    // Use browser back if we have history, otherwise just clear selection
+    if (window.history.state?.content) {
+      window.history.back();
+    } else {
+      setSelectedContent(null);
+      const newUrl = buildUrl(lastSearchQuery.current, null);
+      window.history.replaceState({ query: lastSearchQuery.current }, "", newUrl);
+    }
   };
+
+  // Show nothing while loading content from URL to prevent flash
+  if (loadingFromUrl) {
+    return (
+      <div class="browse-page">
+        <div class="loading-placeholder">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div class="browse-page">

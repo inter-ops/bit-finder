@@ -1,8 +1,9 @@
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useCallback } from "preact/hooks";
 import { SearchBar } from "./components/SearchBar";
 import { TorrentList } from "./components/TorrentList";
 import { FilterPanel } from "./components/FilterPanel";
 import { Notification } from "./components/Notification";
+import { CloudflareStatus } from "./components/CloudflareStatus";
 import Downloads from "./pages/Downloads";
 import Browse from "./pages/Browse";
 import { Torrent, Filters } from "./types";
@@ -20,8 +21,24 @@ const DEFAULT_FILTERS: Filters = {
   minSeeds: 0
 };
 
+// Helper to get tab from URL path
+const getTabFromUrl = (): Tab => {
+  const path = window.location.pathname;
+  if (path === "/search" || path.startsWith("/search")) return "search";
+  if (path === "/downloads" || path.startsWith("/downloads")) return "downloads";
+  return "browse"; // Default to browse for "/" or "/browse"
+};
+
+// Helper to get base path for tab
+const getPathForTab = (tab: Tab): string => {
+  if (tab === "search") return "/search";
+  if (tab === "downloads") return "/downloads";
+  return "/browse";
+};
+
 export function App() {
-  const [activeTab, setActiveTab] = useState<Tab>("browse");
+  // Initialize tab from URL immediately to prevent flash
+  const [activeTab, setActiveTab] = useState<Tab>(getTabFromUrl);
   const [allTorrents, setAllTorrents] = useState<Torrent[]>([]);
   const [filteredTorrents, setFilteredTorrents] = useState<Torrent[]>([]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
@@ -29,81 +46,103 @@ export function App() {
   const [lastQuery, setLastQuery] = useState<string>("");
   const [lastLimit, setLastLimit] = useState<number>(50);
 
-  // Warmup 1337x API on app load (preload Cloudflare cookies)
-  useEffect(() => {
-    fetch("/api/1337x/warmup", { method: "POST" })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("[1337x] Warmup:", data.message);
-      })
-      .catch(() => {
-        // Silently ignore warmup errors - it will retry on first search
-      });
-  }, []);
   const [notification, setNotification] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
   const [highlightedTorrent, setHighlightedTorrent] = useState<string | null>(null);
 
+  // Handle tab change with URL update
+  const handleTabChange = useCallback((tab: Tab, pushHistory = true) => {
+    setActiveTab(tab);
+    
+    // Build new URL preserving search params for browse tab
+    const currentParams = new URLSearchParams(window.location.search);
+    let newUrl = getPathForTab(tab);
+    
+    // Only preserve params for browse tab (query, id, type)
+    if (tab === "browse" && currentParams.toString()) {
+      // Clear params when switching to browse tab without specific content
+      newUrl = "/browse";
+    } else if (tab !== "browse") {
+      // Clear browse-specific params for other tabs
+      newUrl = getPathForTab(tab);
+    }
+    
+    if (pushHistory) {
+      window.history.pushState({ tab }, "", newUrl);
+    } else {
+      window.history.replaceState({ tab }, "", newUrl);
+    }
+  }, []);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = getTabFromUrl();
+      setActiveTab(tab);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    
+    // Set initial history state if not set
+    if (!window.history.state?.tab) {
+      const currentTab = getTabFromUrl();
+      window.history.replaceState({ tab: currentTab }, "", window.location.href);
+    }
+
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Handler to navigate to downloads with a highlighted torrent
-  const handleNavigateToDownloads = (infoHash?: string) => {
+  const handleNavigateToDownloads = useCallback((infoHash?: string) => {
     if (infoHash) {
       setHighlightedTorrent(infoHash);
-      // Clear highlight after 5 seconds
       setTimeout(() => setHighlightedTorrent(null), 5000);
     }
-    setActiveTab("downloads");
-  };
+    handleTabChange("downloads");
+  }, [handleTabChange]);
 
   // Apply filters whenever torrents or filters change
   useEffect(() => {
     let result = [...allTorrents];
 
-    // Filter by category
     if (filters.categories.length > 0) {
       result = result.filter((t) => filters.categories.includes(t.category));
     }
 
-    // Filter by provider
     if (filters.providers.length > 0) {
       result = result.filter((t) => filters.providers.includes(t.provider));
     }
 
-    // Filter by resolution
     if (filters.resolutions.length > 0) {
       result = result.filter(
         (t) => t.metadata.resolution && filters.resolutions.includes(t.metadata.resolution)
       );
     }
 
-    // Filter by video codec
     if (filters.videoCodecs.length > 0) {
       result = result.filter(
         (t) => t.metadata.videoCodec && filters.videoCodecs.includes(t.metadata.videoCodec)
       );
     }
 
-    // Filter by audio codec
     if (filters.audioCodecs.length > 0) {
       result = result.filter(
         (t) => t.metadata.audioCodec && filters.audioCodecs.includes(t.metadata.audioCodec)
       );
     }
 
-    // Filter by source
     if (filters.sources.length > 0) {
       result = result.filter(
         (t) => t.metadata.source && filters.sources.includes(t.metadata.source)
       );
     }
 
-    // Filter by HDR
     if (filters.hdr.length > 0) {
       result = result.filter((t) => t.metadata.hdr && filters.hdr.includes(t.metadata.hdr));
     }
 
-    // Filter by minimum seeds
     if (filters.minSeeds > 0) {
       result = result.filter((t) => t.seeds >= filters.minSeeds);
     }
@@ -122,7 +161,6 @@ export function App() {
     try {
       let url = `/api/search?name=${encodeURIComponent(query)}&limit=${limit}`;
 
-      // Add provider filter if specified
       if (filters.providers.length > 0) {
         url += `&providers=${filters.providers.join(",")}`;
       }
@@ -170,7 +208,6 @@ export function App() {
 
   const handleDownload = async (torrent: Torrent) => {
     try {
-      // First get the magnet
       const magnetResponse = await fetch("/api/magnet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -184,7 +221,6 @@ export function App() {
         return;
       }
 
-      // Then add to transmission
       const downloadResponse = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -214,7 +250,6 @@ export function App() {
 
     setFilters(newFilters);
 
-    // Re-search if providers changed and we have a previous query
     if (providersChanged && lastQuery) {
       handleSearch(lastQuery, lastLimit);
     }
@@ -224,7 +259,6 @@ export function App() {
     const hadProviders = filters.providers.length > 0;
     setFilters(DEFAULT_FILTERS);
 
-    // Re-search if we had provider filters and we have a previous query
     if (hadProviders && lastQuery) {
       handleSearch(lastQuery, lastLimit);
     }
@@ -273,6 +307,7 @@ export function App() {
 
   return (
     <div class="app">
+      <CloudflareStatus onReady={() => console.log("[1337x] Ready")} />
       <header class="header">
         <div class="container">
           <div class="header-row">
@@ -280,19 +315,19 @@ export function App() {
             <nav class="tabs">
               <button
                 class={`tab ${activeTab === "browse" ? "active" : ""}`}
-                onClick={() => setActiveTab("browse")}
+                onClick={() => handleTabChange("browse")}
               >
                 Browse Movies and TV Shows
               </button>
               <button
                 class={`tab ${activeTab === "search" ? "active" : ""}`}
-                onClick={() => setActiveTab("search")}
+                onClick={() => handleTabChange("search")}
               >
                 Direct Torrent Search
               </button>
               <button
                 class={`tab ${activeTab === "downloads" ? "active" : ""}`}
-                onClick={() => setActiveTab("downloads")}
+                onClick={() => handleTabChange("downloads")}
               >
                 Downloads
               </button>

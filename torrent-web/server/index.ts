@@ -178,10 +178,35 @@ app.get("/api/search", async (c) => {
   }
 });
 
-// 1337x API warmup - preload Cloudflare cookies
+// 1337x API warmup - preload Cloudflare cookies (legacy endpoint)
 app.post("/api/1337x/warmup", async (c) => {
   const data = await leet.warmup();
   return c.json(data);
+});
+
+// 1337x API warmup with retries - returns final status after all retries
+app.post("/api/1337x/warmup-with-retry", async (c) => {
+  const data = await leet.warmupWithRetry(3);
+  return c.json(data);
+});
+
+// 1337x API warmup with SSE for real-time status updates
+app.get("/api/1337x/warmup-stream", async (c) => {
+  c.header("Content-Type", "text/event-stream");
+  c.header("Cache-Control", "no-cache");
+  c.header("Connection", "keep-alive");
+
+  return stream(c, async (stream) => {
+    const sendEvent = async (data: leet.WarmupStatus) => {
+      await stream.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const result = await leet.warmupWithRetry(3, sendEvent);
+
+    // Send final status
+    await sendEvent(result);
+    await stream.write("event: done\ndata: {}\n\n");
+  });
 });
 
 // 1337x API status

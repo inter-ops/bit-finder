@@ -128,7 +128,9 @@ def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
     try:
         driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
         
-        cookies = {c["name"]: c["value"] for c in driver.get_cookies()}
+        # Get ALL cookies, not just cf_clearance
+        all_cookies = driver.get_cookies()
+        cookies = {c["name"]: c["value"] for c in all_cookies}
         user_agent = driver.run_js("return navigator.userAgent")
         
         print(f"[1337x] Got cookies: {list(cookies.keys())}")
@@ -136,6 +138,10 @@ def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
     except Exception as e:
         print(f"[1337x] Browser error: {e}")
         raise
+
+
+# Create a persistent session for better cookie handling
+_session = requests.Session()
 
 
 def fetch_cookies_safe() -> bool:
@@ -175,35 +181,59 @@ def fetch_cookies_safe() -> bool:
 def ensure_cookies() -> bool:
     """Ensure we have valid cookies, refresh if needed"""
     if not cache.needs_refresh():
+        print("[1337x] Cookies already valid, no refresh needed")
         return True
+    print("[1337x] Cookies need refresh, calling fetch_cookies_safe")
     return fetch_cookies_safe()
 
 
+def get_browser_headers() -> dict:
+    """Get browser-like headers to reduce Cloudflare blocks"""
+    return {
+        "User-Agent": cache.user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+    }
+
+
 def fetch(url: str) -> str:
-    """Fetch URL using cached cookies"""
+    """Fetch URL using cached cookies and persistent session"""
     if not ensure_cookies():
         raise Exception("Failed to get Cloudflare cookies")
     
-    response = requests.get(
-        url,
-        cookies=cache.cookies,
-        headers={"User-Agent": cache.user_agent},
-        timeout=30
+    # Update session cookies and headers
+    _session.cookies.clear()
+    _session.cookies.update(cache.cookies)
+    _session.headers.update(get_browser_headers())
+    
+    response = _session.get(url, timeout=30)
+    
+    # Check if blocked
+    is_blocked = response.status_code == 403 or (
+        response.status_code == 200 and 
+        "challenge" in response.text.lower() and 
+        len(response.text) < 10000  # Real pages are larger
     )
     
-    # If blocked, force refresh and retry once
-    if response.status_code == 403 or "challenge" in response.text.lower():
+    if is_blocked:
         print("[1337x] Blocked - forcing cookie refresh")
         cache.fetched_at = 0  # Force refresh
         if not ensure_cookies():
             raise Exception("Failed to refresh cookies after block")
         
-        response = requests.get(
-            url,
-            cookies=cache.cookies,
-            headers={"User-Agent": cache.user_agent},
-            timeout=30
-        )
+        # Update session with new cookies
+        _session.cookies.clear()
+        _session.cookies.update(cache.cookies)
+        
+        response = _session.get(url, timeout=30)
     
     return response.text
 
@@ -347,6 +377,7 @@ async def search(query: str = Query(..., min_length=2), limit: int = Query(50)):
             print(f"[1337x] Search failed: Could not get Cloudflare cookies")
             return SearchResponse(torrents=[], error="Failed to bypass Cloudflare. Please try again later.")
         
+        print(f"[1337x] Searching for query: {query}")
         url = f"https://1337x.to/search/{query.replace(' ', '+')}/1/"
         html = fetch(url)
         torrents = parse_search(html)
