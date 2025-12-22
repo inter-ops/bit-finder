@@ -7,3 +7,4 @@ client/dist
 client/node_modules
 *.log
 .DS_Store
+1337x-search/cookie_cache.json

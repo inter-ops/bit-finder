@@ -8,7 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "preact": "^10.19.0"
+    "preact": "^10.19.0",
+    "wouter": "^3.9.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.0",

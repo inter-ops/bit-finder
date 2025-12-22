@@ -1,337 +1,70 @@
-import { useState, useEffect, useCallback, useRef } from "preact/hooks";
-import { SearchBar } from "./components/SearchBar";
-import { TorrentList } from "./components/TorrentList";
-import { FilterPanel } from "./components/FilterPanel";
-import { Notification } from "./components/Notification";
+import { useState, useCallback, useRef } from "preact/hooks";
+import { Router, Route, useLocation, Redirect, Switch } from "wouter";
 import { CloudflareStatus } from "./components/CloudflareStatus";
-import Downloads from "./pages/Downloads";
 import Browse from "./pages/Browse";
-import { Torrent, Filters } from "./types";
+import Search from "./pages/Search";
+import Downloads from "./pages/Downloads";
 
-type Tab = "browse" | "search" | "downloads";
+// Helper to get full URL (path + search)
+const getFullUrl = () => window.location.pathname + window.location.search;
 
-const DEFAULT_FILTERS: Filters = {
-  categories: [],
-  providers: [],
-  resolutions: [],
-  videoCodecs: [],
-  audioCodecs: [],
-  sources: [],
-  hdr: [],
-  minSeeds: 0
-};
-
-// Helper to get tab from URL path
-const getTabFromUrl = (): Tab => {
-  const path = window.location.pathname;
-  if (path === "/search" || path.startsWith("/search")) return "search";
-  if (path === "/downloads" || path.startsWith("/downloads")) return "downloads";
-  return "browse"; // Default to browse for "/" or "/browse"
-};
-
-// Helper to get base path for tab
-const getPathForTab = (tab: Tab): string => {
-  if (tab === "search") return "/search";
-  if (tab === "downloads") return "/downloads";
-  return "/browse";
-};
-
+// Main App with routing
 export function App() {
-  // Initialize tab from URL immediately to prevent flash
-  const [activeTab, setActiveTab] = useState<Tab>(getTabFromUrl);
-  const [allTorrents, setAllTorrents] = useState<Torrent[]>([]);
-  const [filteredTorrents, setFilteredTorrents] = useState<Torrent[]>([]);
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [loading, setLoading] = useState(false);
-  const [lastQuery, setLastQuery] = useState<string>("");
-  const [lastLimit, setLastLimit] = useState<number>(50);
-
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [location, setLocation] = useLocation();
+  const [browseKey, setBrowseKey] = useState(0);
   const [highlightedTorrent, setHighlightedTorrent] = useState<string | null>(null);
   
-  // Reset keys - increment to reset a tab's state
-  const [browseResetKey, setBrowseResetKey] = useState(0);
-  
-  // Store browse URL when switching away so we can restore it
+  // Store browse URL when navigating away
   const savedBrowseUrl = useRef<string | null>(null);
+  
+  // Track which tab we're on (use pathname from window to include search params context)
+  const currentPath = window.location.pathname;
+  const isOnBrowse = currentPath === '/browse' || currentPath === '/';
+  const isOnSearch = currentPath === '/search';
+  const isOnDownloads = currentPath === '/downloads';
 
-  // Handle tab change with URL update
-  const handleTabChange = useCallback((tab: Tab, pushHistory = true) => {
-    const isAlreadyActive = activeTab === tab;
+  // Handle tab navigation with state preservation
+  const handleTabClick = useCallback((targetTab: 'browse' | 'search' | 'downloads') => {
+    const targetPath = targetTab === 'browse' ? '/browse' : targetTab === 'search' ? '/search' : '/downloads';
     
-    // If clicking on already active tab, reset that tab
-    if (isAlreadyActive) {
-      if (tab === "browse") {
-        setBrowseResetKey(k => k + 1);
-        savedBrowseUrl.current = null; // Clear saved URL on reset
-        window.history.pushState({ tab }, "", "/browse");
-      }
-      // For other tabs, just navigate to clean URL
-      if (tab === "downloads" || tab === "search") {
-        window.history.pushState({ tab }, "", getPathForTab(tab));
-      }
+    // If clicking on same tab, reset it
+    if ((targetTab === 'browse' && isOnBrowse)) {
+      setBrowseKey(k => k + 1);
+      savedBrowseUrl.current = null;
+      setLocation('/browse');
+      return;
+    }
+    if ((targetTab === 'search' && isOnSearch) || (targetTab === 'downloads' && isOnDownloads)) {
+      setLocation(targetPath);
       return;
     }
     
-    // Save current browse URL when switching away from browse
-    if (activeTab === "browse") {
-      savedBrowseUrl.current = window.location.pathname + window.location.search;
+    // Save current browse URL (including search params) when leaving browse
+    if (isOnBrowse) {
+      savedBrowseUrl.current = getFullUrl();
     }
     
-    setActiveTab(tab);
-    
-    // When switching TO browse, restore saved URL if we have one
-    if (tab === "browse" && savedBrowseUrl.current) {
-      const urlToRestore = savedBrowseUrl.current;
-      if (pushHistory) {
-        window.history.pushState({ tab }, "", urlToRestore);
-      } else {
-        window.history.replaceState({ tab }, "", urlToRestore);
-      }
+    // Restore browse URL when returning to browse
+    if (targetTab === 'browse' && savedBrowseUrl.current) {
+      setLocation(savedBrowseUrl.current);
       return;
     }
     
-    // For other tabs, just use the base path
-    const newUrl = getPathForTab(tab);
-    
-    if (pushHistory) {
-      window.history.pushState({ tab }, "", newUrl);
-    } else {
-      window.history.replaceState({ tab }, "", newUrl);
-    }
-  }, [activeTab]);
+    setLocation(targetPath);
+  }, [isOnBrowse, isOnSearch, isOnDownloads, setLocation]);
 
-  // Listen for browser back/forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      const tab = getTabFromUrl();
-      setActiveTab(tab);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    
-    // Set initial history state if not set
-    if (!window.history.state?.tab) {
-      const currentTab = getTabFromUrl();
-      window.history.replaceState({ tab: currentTab }, "", window.location.href);
-    }
-
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  // Handler to navigate to downloads with a highlighted torrent
+  // Navigate to downloads with optional highlight
   const handleNavigateToDownloads = useCallback((infoHash?: string) => {
     if (infoHash) {
       setHighlightedTorrent(infoHash);
       setTimeout(() => setHighlightedTorrent(null), 5000);
     }
-    handleTabChange("downloads");
-  }, [handleTabChange]);
-
-  // Apply filters whenever torrents or filters change
-  useEffect(() => {
-    let result = [...allTorrents];
-
-    if (filters.categories.length > 0) {
-      result = result.filter((t) => filters.categories.includes(t.category));
+    // Save browse URL (including search params) if on browse
+    if (isOnBrowse) {
+      savedBrowseUrl.current = getFullUrl();
     }
-
-    if (filters.providers.length > 0) {
-      result = result.filter((t) => filters.providers.includes(t.provider));
-    }
-
-    if (filters.resolutions.length > 0) {
-      result = result.filter(
-        (t) => t.metadata.resolution && filters.resolutions.includes(t.metadata.resolution)
-      );
-    }
-
-    if (filters.videoCodecs.length > 0) {
-      result = result.filter(
-        (t) => t.metadata.videoCodec && filters.videoCodecs.includes(t.metadata.videoCodec)
-      );
-    }
-
-    if (filters.audioCodecs.length > 0) {
-      result = result.filter(
-        (t) => t.metadata.audioCodec && filters.audioCodecs.includes(t.metadata.audioCodec)
-      );
-    }
-
-    if (filters.sources.length > 0) {
-      result = result.filter(
-        (t) => t.metadata.source && filters.sources.includes(t.metadata.source)
-      );
-    }
-
-    if (filters.hdr.length > 0) {
-      result = result.filter((t) => t.metadata.hdr && filters.hdr.includes(t.metadata.hdr));
-    }
-
-    if (filters.minSeeds > 0) {
-      result = result.filter((t) => t.seeds >= filters.minSeeds);
-    }
-
-    setFilteredTorrents(result);
-  }, [allTorrents, filters]);
-
-  const handleSearch = async (query: string, limit: number = 50) => {
-    if (!query.trim()) return;
-
-    setLoading(true);
-    setNotification(null);
-    setLastQuery(query);
-    setLastLimit(limit);
-
-    try {
-      let url = `/api/search?name=${encodeURIComponent(query)}&limit=${limit}`;
-
-      if (filters.providers.length > 0) {
-        url += `&providers=${filters.providers.join(",")}`;
-      }
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (response.ok) {
-        setAllTorrents(data.results || []);
-        if (!data.results || data.results.length === 0) {
-          setNotification({ message: "No torrents found", type: "error" });
-        }
-      } else {
-        setNotification({ message: data.error || "Search failed", type: "error" });
-        setAllTorrents([]);
-      }
-    } catch (error) {
-      setNotification({ message: "Failed to search torrents", type: "error" });
-      setAllTorrents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGetMagnet = async (torrent: Torrent) => {
-    try {
-      const response = await fetch("/api/magnet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(torrent.raw)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await navigator.clipboard.writeText(data.magnet);
-        setNotification({ message: "Magnet link copied to clipboard!", type: "success" });
-      } else {
-        setNotification({ message: data.error || "Failed to get magnet", type: "error" });
-      }
-    } catch (error) {
-      setNotification({ message: "Failed to get magnet link", type: "error" });
-    }
-  };
-
-  const handleDownload = async (torrent: Torrent) => {
-    try {
-      const magnetResponse = await fetch("/api/magnet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(torrent.raw)
-      });
-
-      const magnetData = await magnetResponse.json();
-
-      if (!magnetResponse.ok) {
-        setNotification({ message: magnetData.error || "Failed to get magnet", type: "error" });
-        return;
-      }
-
-      const downloadResponse = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ magnet: magnetData.magnet })
-      });
-
-      const downloadData = await downloadResponse.json();
-
-      if (downloadResponse.ok) {
-        setNotification({ message: "Torrent added to downloads!", type: "success" });
-      } else {
-        setNotification({
-          message: downloadData.error || "Failed to add torrent",
-          type: "error"
-        });
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to download torrent";
-      setNotification({ message: errorMessage, type: "error" });
-    }
-  };
-
-  const handleFilterChange = (newFilters: Filters) => {
-    const providersChanged =
-      newFilters.providers.length !== filters.providers.length ||
-      !newFilters.providers.every((p, i) => p === filters.providers[i]);
-
-    setFilters(newFilters);
-
-    if (providersChanged && lastQuery) {
-      handleSearch(lastQuery, lastLimit);
-    }
-  };
-
-  const handleClearFilters = () => {
-    const hadProviders = filters.providers.length > 0;
-    setFilters(DEFAULT_FILTERS);
-
-    if (hadProviders && lastQuery) {
-      handleSearch(lastQuery, lastLimit);
-    }
-  };
-
-  const handleBadgeClick = (type: string, value: string) => {
-    setFilters((prev) => {
-      const key =
-        type === "resolution"
-          ? "resolutions"
-          : type === "videoCodec"
-          ? "videoCodecs"
-          : type === "audioCodec"
-          ? "audioCodecs"
-          : type === "source"
-          ? "sources"
-          : type === "category"
-          ? "categories"
-          : "hdr";
-
-      const currentValues = prev[key as keyof Filters] as string[];
-      const newValues = currentValues.includes(value)
-        ? currentValues.filter((v) => v !== value)
-        : [...currentValues, value];
-
-      return {
-        ...prev,
-        [key]: newValues
-      };
-    });
-  };
-
-  const handleRemoveFilter = (type: keyof Filters, value: string | number) => {
-    setFilters((prev) => {
-      if (type === "minSeeds") {
-        return { ...prev, minSeeds: 0 };
-      }
-
-      const currentValues = prev[type] as string[];
-      return {
-        ...prev,
-        [type]: currentValues.filter((v) => v !== value)
-      };
-    });
-  };
+    setLocation('/downloads');
+  }, [isOnBrowse, setLocation]);
 
   return (
     <div class="app">
@@ -342,20 +75,20 @@ export function App() {
             <h1>Torrent Finder</h1>
             <nav class="tabs">
               <button
-                class={`tab ${activeTab === "browse" ? "active" : ""}`}
-                onClick={() => handleTabChange("browse")}
+                class={`tab ${isOnBrowse ? 'active' : ''}`}
+                onClick={() => handleTabClick('browse')}
               >
                 Browse Movies and TV Shows
               </button>
               <button
-                class={`tab ${activeTab === "search" ? "active" : ""}`}
-                onClick={() => handleTabChange("search")}
+                class={`tab ${isOnSearch ? 'active' : ''}`}
+                onClick={() => handleTabClick('search')}
               >
                 Direct Torrent Search
               </button>
               <button
-                class={`tab ${activeTab === "downloads" ? "active" : ""}`}
-                onClick={() => handleTabChange("downloads")}
+                class={`tab ${isOnDownloads ? 'active' : ''}`}
+                onClick={() => handleTabClick('downloads')}
               >
                 Downloads
               </button>
@@ -366,57 +99,38 @@ export function App() {
 
       <main class="main">
         <div class="container">
-          {/* Keep Browse mounted to preserve state, use CSS to hide */}
-          <div style={{ display: activeTab === "browse" ? "block" : "none" }}>
-            <Browse 
-              key={browseResetKey} 
-              onNavigateToDownloads={handleNavigateToDownloads} 
-            />
-          </div>
-          {activeTab === "search" && (
-            <>
-              <SearchBar onSearch={handleSearch} loading={loading} />
-
-              {notification && (
-                <Notification
-                  message={notification.message}
-                  type={notification.type}
-                  onClose={() => setNotification(null)}
-                />
-              )}
-
-              {allTorrents.length > 0 ? (
-                <div class="content-wrapper">
-                  <FilterPanel
-                    filters={filters}
-                    onFilterChange={handleFilterChange}
-                    onClearFilters={handleClearFilters}
-                    onRemoveFilter={handleRemoveFilter}
-                    totalResults={allTorrents.length}
-                    filteredResults={filteredTorrents.length}
-                  />
-                  <TorrentList
-                    torrents={filteredTorrents}
-                    loading={loading}
-                    onGetMagnet={handleGetMagnet}
-                    onDownload={handleDownload}
-                    onBadgeClick={handleBadgeClick}
-                  />
+          <Switch>
+            <Route path="/">
+              <Redirect to="/browse" />
+            </Route>
+            
+            <Route path="/browse">
+              {() => (
+                <div key={browseKey}>
+                  <Browse onNavigateToDownloads={handleNavigateToDownloads} />
                 </div>
-              ) : (
-                <TorrentList
-                  torrents={filteredTorrents}
-                  loading={loading}
-                  onGetMagnet={handleGetMagnet}
-                  onDownload={handleDownload}
-                  onBadgeClick={handleBadgeClick}
-                />
               )}
-            </>
-          )}
-          {activeTab === "downloads" && <Downloads highlightedInfoHash={highlightedTorrent} />}
+            </Route>
+            
+            <Route path="/search">
+              <Search />
+            </Route>
+            
+            <Route path="/downloads">
+              <Downloads highlightedInfoHash={highlightedTorrent} />
+            </Route>
+          </Switch>
         </div>
       </main>
     </div>
+  );
+}
+
+// Wrap in Router
+export default function AppWithRouter() {
+  return (
+    <Router>
+      <App />
+    </Router>
   );
 }
