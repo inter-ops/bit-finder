@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "preact/hooks";
+import { useState, useEffect, useCallback, useRef } from "preact/hooks";
 import { SearchBar } from "./components/SearchBar";
 import { TorrentList } from "./components/TorrentList";
 import { FilterPanel } from "./components/FilterPanel";
@@ -51,30 +51,58 @@ export function App() {
     type: "success" | "error";
   } | null>(null);
   const [highlightedTorrent, setHighlightedTorrent] = useState<string | null>(null);
+  
+  // Reset keys - increment to reset a tab's state
+  const [browseResetKey, setBrowseResetKey] = useState(0);
+  
+  // Store browse URL when switching away so we can restore it
+  const savedBrowseUrl = useRef<string | null>(null);
 
   // Handle tab change with URL update
   const handleTabChange = useCallback((tab: Tab, pushHistory = true) => {
+    const isAlreadyActive = activeTab === tab;
+    
+    // If clicking on already active tab, reset that tab
+    if (isAlreadyActive) {
+      if (tab === "browse") {
+        setBrowseResetKey(k => k + 1);
+        savedBrowseUrl.current = null; // Clear saved URL on reset
+        window.history.pushState({ tab }, "", "/browse");
+      }
+      // For other tabs, just navigate to clean URL
+      if (tab === "downloads" || tab === "search") {
+        window.history.pushState({ tab }, "", getPathForTab(tab));
+      }
+      return;
+    }
+    
+    // Save current browse URL when switching away from browse
+    if (activeTab === "browse") {
+      savedBrowseUrl.current = window.location.pathname + window.location.search;
+    }
+    
     setActiveTab(tab);
     
-    // Build new URL preserving search params for browse tab
-    const currentParams = new URLSearchParams(window.location.search);
-    let newUrl = getPathForTab(tab);
-    
-    // Only preserve params for browse tab (query, id, type)
-    if (tab === "browse" && currentParams.toString()) {
-      // Clear params when switching to browse tab without specific content
-      newUrl = "/browse";
-    } else if (tab !== "browse") {
-      // Clear browse-specific params for other tabs
-      newUrl = getPathForTab(tab);
+    // When switching TO browse, restore saved URL if we have one
+    if (tab === "browse" && savedBrowseUrl.current) {
+      const urlToRestore = savedBrowseUrl.current;
+      if (pushHistory) {
+        window.history.pushState({ tab }, "", urlToRestore);
+      } else {
+        window.history.replaceState({ tab }, "", urlToRestore);
+      }
+      return;
     }
+    
+    // For other tabs, just use the base path
+    const newUrl = getPathForTab(tab);
     
     if (pushHistory) {
       window.history.pushState({ tab }, "", newUrl);
     } else {
       window.history.replaceState({ tab }, "", newUrl);
     }
-  }, []);
+  }, [activeTab]);
 
   // Listen for browser back/forward navigation
   useEffect(() => {
@@ -338,9 +366,13 @@ export function App() {
 
       <main class="main">
         <div class="container">
-          {activeTab === "browse" && (
-            <Browse onNavigateToDownloads={handleNavigateToDownloads} />
-          )}
+          {/* Keep Browse mounted to preserve state, use CSS to hide */}
+          <div style={{ display: activeTab === "browse" ? "block" : "none" }}>
+            <Browse 
+              key={browseResetKey} 
+              onNavigateToDownloads={handleNavigateToDownloads} 
+            />
+          </div>
           {activeTab === "search" && (
             <>
               <SearchBar onSearch={handleSearch} loading={loading} />
