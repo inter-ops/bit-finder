@@ -395,5 +395,12 @@ export function getDownloadStatesForTorrents(
   return result;
 }
 
-// Export client for advanced usage
-export { client };
+// Get the download path for a torrent
+export function getTorrentPath(infoHash: string): string | null {
+  const torrent = client.torrents.find((t) => t.infoHash === infoHash);
+  if (!torrent || !torrent.name) return null;
+  return join(DOWNLOAD_PATH, torrent.name);
+}
+
+// Export client and download path for advanced usage
+export { client, DOWNLOAD_PATH };

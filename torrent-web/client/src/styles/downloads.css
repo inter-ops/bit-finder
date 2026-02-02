@@ -375,6 +375,28 @@
   border-color: rgba(124, 58, 237, 0.4);
 }
 
+/* Show in Finder Button */
+.btn-finder {
+  background: transparent;
+  color: #0ea5e9;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  padding: 0.4rem 0.75rem;
+  border-radius: 3px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.btn-finder:hover {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284c7;
+  border-color: rgba(14, 165, 233, 0.4);
+}
+
 /* Stream Dropdown */
 .stream-dropdown {
   position: relative;

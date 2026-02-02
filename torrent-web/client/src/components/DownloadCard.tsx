@@ -52,6 +52,14 @@ export default function DownloadCard({
   const [showPlayer, setShowPlayer] = useState(false);
   const [selectedFile, setSelectedFile] = useState<number | null>(null);
 
+  const handleShowInFinder = async () => {
+    try {
+      await fetch(`/api/torrents/${torrent.infoHash}/reveal`, { method: "POST" });
+    } catch (err) {
+      console.error("Failed to reveal in Finder:", err);
+    }
+  };
+
   const isDownloading = !torrent.paused && !torrent.done;
   const isSeeding = torrent.done && !torrent.paused;
   const isStopped = torrent.paused;
@@ -173,6 +181,9 @@ export default function DownloadCard({
               </div>
             </div>
           ))}
+        <button class="btn btn-finder" onClick={handleShowInFinder}>
+          Show in Finder
+        </button>
         {isStopped ? (
           <button class="btn btn-primary" onClick={onResume}>
             Resume

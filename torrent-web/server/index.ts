@@ -15,8 +15,10 @@ import {
   removeTorrent,
   getFileByIndex,
   getVideoFile,
-  getDownloadStatesForTorrents
+  getDownloadStatesForTorrents,
+  getTorrentPath
 } from "./webtorrent.js";
+import { exec } from "child_process";
 
 const app = new Hono();
 
@@ -351,6 +353,40 @@ app.delete("/api/torrents/:infoHash/delete", async (c) => {
   } catch (error) {
     console.error("Delete torrent error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to delete torrent";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// Reveal torrent in Finder (macOS)
+app.post("/api/torrents/:infoHash/reveal", async (c) => {
+  try {
+    const infoHash = c.req.param("infoHash");
+    const torrentPath = getTorrentPath(infoHash);
+
+    if (!torrentPath) {
+      return c.json({ error: "Torrent not found" }, 404);
+    }
+
+    // Use 'open -R' to reveal in Finder on macOS
+    const result = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+      exec(`open -R "${torrentPath}"`, (error) => {
+        if (error) {
+          console.error("Reveal in Finder error:", error);
+          resolve({ success: false, error: "Failed to reveal in Finder" });
+        } else {
+          resolve({ success: true });
+        }
+      });
+    });
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 500);
+    }
+
+    return c.json({ success: true, message: "Revealed in Finder", path: torrentPath });
+  } catch (error) {
+    console.error("Reveal in Finder error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to reveal in Finder";
     return c.json({ error: errorMessage }, 500);
   }
 });
