@@ -66,6 +66,12 @@ const torrentAddedAt: Record<string, number> = {};
 // Track torrents that were complete when restored — used to override progress during verification
 const completedHashes = new Set<string>();
 
+function cleanupTorrentState(infoHash: string) {
+  completedHashes.delete(infoHash);
+  delete torrentAddedAt[infoHash];
+  delete torrentMetadata[infoHash];
+}
+
 function saveState() {
   try {
     const state: PersistedState = { torrents: {} };
@@ -326,11 +332,15 @@ export function removeTorrent(infoHash: string, deleteFiles = false): Promise<bo
           console.error(`Failed to remove torrent: ${message}`);
           resolve(false);
         } else {
+          // Ensure no stale state survives a removal (e.g. re-adding same infoHash)
+          cleanupTorrentState(infoHash);
           saveState();
           resolve(true);
         }
       });
     } else {
+      // Idempotent cleanup: if we have stale in-memory state, clear it anyway.
+      cleanupTorrentState(infoHash);
       resolve(false);
     }
   });
