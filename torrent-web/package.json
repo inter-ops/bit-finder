@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npx tsx --watch server/index.ts",
     "dev:client": "cd client && bun run dev",
+    "dev:1337x": "cd 1337x-search && .venv/bin/python torrent_api.py",
     "build": "cd client && bun run build",
     "preview": "cd client && bun run preview"
   },
