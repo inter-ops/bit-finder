@@ -117,23 +117,86 @@ class CookieCache:
 cache = CookieCache()
 
 
+BROWSER_CF_TIMEOUT = 45  # seconds to wait for cf_clearance cookie
+BROWSER_PROCESS_TIMEOUT = 60  # seconds before killing the subprocess
+
+
 @browser(
     block_images=True,
     output=None,
     close_on_crash=True,
 )
 def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
-    """Open browser, bypass Cloudflare, return cookies"""
+    """Open browser, wait for Cloudflare challenge to auto-resolve, return cookies.
+
+    Does NOT use google_get(bypass_cloudflare=True) because it hangs
+    indefinitely after the page loads (known Botasaurus issue).
+    Instead, navigates directly and waits for cf_clearance cookie to appear,
+    which proves the JS challenge was solved by the browser engine.
+    """
     print("[1337x] Opening browser to get Cloudflare cookies...")
     try:
-        driver.google_get("https://1337x.to/search/test/1/", bypass_cloudflare=True)
-        
-        # Get ALL cookies, not just cf_clearance
+        driver.get("https://1337x.to/search/test/1/")
+
+        # Wait for Cloudflare challenge to auto-resolve.
+        # The browser engine executes the CF JS challenge automatically.
+        # We know it's done when cf_clearance cookie appears.
+        waited = 0
+        cf_found = False
+
+        while waited < BROWSER_CF_TIMEOUT:
+            time.sleep(1)
+            waited += 1
+
+            try:
+                all_cookies = driver.get_cookies()
+                cookie_names = [c["name"] for c in all_cookies]
+
+                if "cf_clearance" in cookie_names:
+                    print(f"[1337x] cf_clearance cookie obtained after {waited}s")
+                    cf_found = True
+                    # Give the browser a moment to finish the redirect to actual page
+                    time.sleep(2)
+                    break
+
+                # Also check if we landed on the real page without needing cf_clearance
+                # (e.g. if CF protection is temporarily disabled)
+                try:
+                    has_results = driver.run_js(
+                        "return !!document.querySelector('table.table-list')"
+                    )
+                    if has_results:
+                        print(f"[1337x] Page loaded without CF challenge after {waited}s")
+                        cf_found = True
+                        break
+                except Exception:
+                    pass
+
+                if waited % 5 == 0:
+                    print(f"[1337x] Waiting for CF challenge... {waited}s (cookies: {cookie_names})")
+
+            except Exception as e:
+                print(f"[1337x] Error polling cookies at {waited}s: {e}")
+                # Browser might be navigating, keep trying
+                continue
+
+        if not cf_found:
+            print(f"[1337x] cf_clearance not obtained after {BROWSER_CF_TIMEOUT}s")
+
+        # Extract final cookies and user agent
         all_cookies = driver.get_cookies()
         cookies = {c["name"]: c["value"] for c in all_cookies}
         user_agent = driver.run_js("return navigator.userAgent")
-        
-        print(f"[1337x] Got cookies: {list(cookies.keys())}")
+
+        if not cookies:
+            raise Exception("No cookies obtained from browser")
+
+        has_cf = "cf_clearance" in cookies
+        print(f"[1337x] Got {len(cookies)} cookies (cf_clearance: {has_cf}): {list(cookies.keys())}")
+
+        if not has_cf:
+            raise Exception("cf_clearance cookie not found — Cloudflare bypass failed")
+
         return {"cookies": cookies, "user_agent": user_agent}
     except Exception as e:
         print(f"[1337x] Browser error: {e}")
@@ -144,31 +207,87 @@ def _fetch_cookies_browser(driver: Driver, data=None) -> dict:
 _session = requests.Session()
 
 
-def fetch_cookies_safe() -> bool:
-    """Safely fetch cookies with lock to prevent concurrent fetches"""
+def _browser_subprocess_target(q):
+    """Top-level target for multiprocessing (must be picklable)."""
+    try:
+        result = _fetch_cookies_browser()
+        q.put({"ok": True, "result": result})
+    except Exception as e:
+        q.put({"ok": False, "error": str(e)})
+
+
+def _run_browser_in_subprocess() -> dict:
+    """Run browser cookie fetch in a subprocess with a hard kill timeout.
+
+    Uses multiprocessing so we can actually terminate a hung browser,
+    unlike ThreadPoolExecutor which cannot kill running threads.
+    """
+    import multiprocessing as mp
+
+    result_queue: mp.Queue = mp.Queue()
+
+    proc = mp.Process(target=_browser_subprocess_target, args=(result_queue,), daemon=True)
+    proc.start()
+    proc.join(timeout=BROWSER_PROCESS_TIMEOUT)
+
+    if proc.is_alive():
+        print(f"[1337x] KILL SWITCH: Browser process exceeded {BROWSER_PROCESS_TIMEOUT}s, terminating")
+        proc.terminate()
+        proc.join(timeout=5)
+        if proc.is_alive():
+            print("[1337x] Process didn't terminate, killing forcefully")
+            proc.kill()
+            proc.join(timeout=3)
+        raise Exception(f"Browser process killed after {BROWSER_PROCESS_TIMEOUT}s timeout")
+
+    if result_queue.empty():
+        raise Exception("Browser process exited without returning a result")
+
+    msg = result_queue.get_nowait()
+    if not msg["ok"]:
+        raise Exception(msg["error"])
+
+    return msg["result"]
+
+
+def fetch_cookies_safe(max_retries: int = 2) -> bool:
+    """Safely fetch cookies with lock, subprocess timeout, and retries.
+
+    Args:
+        max_retries: Number of full browser attempts before giving up.
+    """
     with cache._lock:
         # Double-check after acquiring lock
         if not cache.needs_refresh():
             print("[1337x] Cookies already valid (checked after lock)")
             return True
-        
+
         # Check if already fetching
         if cache._is_fetching:
             print("[1337x] Cookie fetch already in progress, waiting...")
             return False
-        
+
         cache._is_fetching = True
-    
+
     try:
-        result = _fetch_cookies_browser()
-        if result and isinstance(result, dict) and "cookies" in result and "user_agent" in result:
-            cache.update(result["cookies"], result["user_agent"])
-            return True
-        else:
-            raise Exception("Invalid result from browser function")
-    except Exception as e:
-        log_error("Failed to fetch cookies", e)
-        print(f"[1337x] Cookie fetch failed: {e}")
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"[1337x] Cookie fetch attempt {attempt}/{max_retries}")
+                result = _run_browser_in_subprocess()
+                if result and isinstance(result, dict) and "cookies" in result and "user_agent" in result:
+                    cache.update(result["cookies"], result["user_agent"])
+                    return True
+                else:
+                    raise Exception("Invalid result from browser function")
+            except Exception as e:
+                log_error(f"Cookie fetch attempt {attempt}/{max_retries} failed", e)
+                print(f"[1337x] Attempt {attempt}/{max_retries} failed: {e}")
+                if attempt < max_retries:
+                    print("[1337x] Retrying in 2s...")
+                    time.sleep(2)
+
+        # All retries exhausted
+        print(f"[1337x] All {max_retries} cookie fetch attempts failed")
         cache.cookies = {}
         cache.user_agent = ""
         cache.fetched_at = 0

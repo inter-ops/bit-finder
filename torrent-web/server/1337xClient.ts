@@ -251,7 +251,8 @@ async function doWarmupWithRetry(
       }
 
       // Wait for the background cookie fetch to complete
-      const success = await waitForCookies(60_000);
+      // Python side has 45s hard timeout per attempt with 2 retries, so allow up to 120s
+      const success = await waitForCookies(120_000);
 
       if (success) {
         const result: WarmupStatus = {
