@@ -60,6 +60,18 @@ function loadState(): PersistedState {
 // Store metadata for each torrent (by infoHash)
 const torrentMetadata: Record<string, { title: string; provider?: string; size?: string }> = {};
 
+// Track when each torrent was added (by infoHash) — preserved across saves
+const torrentAddedAt: Record<string, number> = {};
+
+// Track torrents that were complete when restored — used to override progress during verification
+const completedHashes = new Set<string>();
+
+function cleanupTorrentState(infoHash: string) {
+  completedHashes.delete(infoHash);
+  delete torrentAddedAt[infoHash];
+  delete torrentMetadata[infoHash];
+}
+
 function saveState() {
   try {
     const state: PersistedState = { torrents: {} };
@@ -68,8 +80,8 @@ function saveState() {
       state.torrents[torrent.infoHash] = {
         magnetURI: torrent.magnetURI,
         paused: torrent.paused,
-        addedAt: Date.now(),
-        done: torrent.done,
+        addedAt: torrentAddedAt[torrent.infoHash] || Date.now(),
+        done: torrent.done || completedHashes.has(torrent.infoHash),
         metadata: torrentMetadata[torrent.infoHash]
       };
     });
@@ -91,6 +103,16 @@ async function restoreTorrents() {
       // Restore metadata if available
       if (torrentState.metadata) {
         torrentMetadata[infoHash] = torrentState.metadata;
+      }
+
+      // Restore addedAt timestamp
+      if (torrentState.addedAt) {
+        torrentAddedAt[infoHash] = torrentState.addedAt;
+      }
+
+      // Track completed torrents so we can override progress during verification
+      if (torrentState.done) {
+        completedHashes.add(infoHash);
       }
 
       // If torrent was complete, pause it after adding to prevent re-verification/seeding
@@ -126,6 +148,7 @@ export interface TorrentInfo {
   done: boolean;
   files: FileInfo[];
   magnetURI: string;
+  metadata?: { title: string; provider?: string; size?: string };
 }
 
 export interface FileInfo {
@@ -140,21 +163,24 @@ export interface FileInfo {
 function formatTorrentInfo(torrent: WebTorrent.Torrent): TorrentInfo {
   // Handle case where files haven't loaded yet (during metadata fetch)
   const files = torrent.files || [];
+  const isKnownComplete = completedHashes.has(torrent.infoHash);
 
   return {
     infoHash: torrent.infoHash,
     name: torrent.name || "Loading...",
-    progress: torrent.progress || 0,
-    downloadSpeed: torrent.downloadSpeed || 0,
-    uploadSpeed: torrent.uploadSpeed || 0,
+    // Override progress/speed for completed torrents during re-verification
+    progress: isKnownComplete ? 1 : torrent.progress || 0,
+    downloadSpeed: isKnownComplete ? 0 : torrent.downloadSpeed || 0,
+    uploadSpeed: isKnownComplete ? 0 : torrent.uploadSpeed || 0,
     numPeers: torrent.numPeers || 0,
     downloaded: torrent.downloaded || 0,
     uploaded: torrent.uploaded || 0,
     totalSize: torrent.length || 0,
-    timeRemaining: torrent.timeRemaining || Infinity,
+    timeRemaining: isKnownComplete ? 0 : torrent.timeRemaining || Infinity,
     paused: torrent.paused || false,
-    done: torrent.done || false,
+    done: isKnownComplete ? true : torrent.done || false,
     magnetURI: torrent.magnetURI,
+    metadata: torrentMetadata[torrent.infoHash],
     files: files.map((file, index) => ({
       name: file.name,
       path: file.path,
@@ -202,9 +228,14 @@ export async function addTorrent(
       // Store metadata if provided
       if (options.metadata) {
         torrentMetadata[torrent.infoHash] = options.metadata;
-      } else {
-        // Store name as fallback metadata
+      } else if (!torrentMetadata[torrent.infoHash]) {
+        // Store name as fallback metadata only if not already set (e.g. from restore)
         torrentMetadata[torrent.infoHash] = { title: torrent.name || "Unknown" };
+      }
+
+      // Record addedAt if not already set
+      if (!torrentAddedAt[torrent.infoHash]) {
+        torrentAddedAt[torrent.infoHash] = Date.now();
       }
 
       // If should be paused (either explicitly or was complete), pause it
@@ -216,7 +247,8 @@ export async function addTorrent(
       }
 
       // Prioritize first and last pieces for streaming
-      if (torrent.files.length > 0) {
+      // Skip for completed torrents to avoid triggering verification activity
+      if (torrent.files.length > 0 && !options.wasComplete) {
         const mainFile = torrent.files.reduce((a, b) => (a.length > b.length ? a : b));
         // Select the main file for download
         mainFile.select();
@@ -280,6 +312,8 @@ export function pauseTorrent(infoHash: string): boolean {
 export function resumeTorrent(infoHash: string): boolean {
   const torrent = client.torrents.find((t) => t.infoHash === infoHash);
   if (torrent) {
+    // Remove from completedHashes so real progress is reported again
+    completedHashes.delete(infoHash);
     torrent.resume();
     saveState();
     return true;
@@ -298,11 +332,15 @@ export function removeTorrent(infoHash: string, deleteFiles = false): Promise<bo
           console.error(`Failed to remove torrent: ${message}`);
           resolve(false);
         } else {
+          // Ensure no stale state survives a removal (e.g. re-adding same infoHash)
+          cleanupTorrentState(infoHash);
           saveState();
           resolve(true);
         }
       });
     } else {
+      // Idempotent cleanup: if we have stale in-memory state, clear it anyway.
+      cleanupTorrentState(infoHash);
       resolve(false);
     }
   });

@@ -172,12 +172,40 @@ async function waitForCookies(timeoutMs = 60_000): Promise<boolean> {
   return false;
 }
 
+// Singleton to prevent concurrent warmup requests
+let activeWarmup: Promise<WarmupStatus> | null = null;
+
 /**
  * Warmup the 1337x API with retry logic
  * Attempts to get valid Cloudflare cookies up to maxAttempts times
+ * Deduplicates concurrent calls — if a warmup is already in progress, returns the same promise
  */
 export async function warmupWithRetry(
   maxAttempts = 3,
+  onStatusUpdate?: (status: WarmupStatus) => void
+): Promise<WarmupStatus> {
+  // If a warmup is already in progress, wait for it
+  if (activeWarmup) {
+    console.log("[1337x] Warmup already in progress, reusing existing");
+    return activeWarmup;
+  }
+
+  activeWarmup = doWarmupWithRetry(maxAttempts, onStatusUpdate).finally(() => {
+    activeWarmup = null;
+  });
+
+  return activeWarmup;
+}
+
+/**
+ * Check if a warmup is currently in progress
+ */
+export function isWarmupInProgress(): boolean {
+  return activeWarmup !== null;
+}
+
+async function doWarmupWithRetry(
+  maxAttempts: number,
   onStatusUpdate?: (status: WarmupStatus) => void
 ): Promise<WarmupStatus> {
   // First check if we already have valid cookies

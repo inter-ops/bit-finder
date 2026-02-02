@@ -587,6 +587,20 @@ body {
   }
 }
 
+.warmup-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.warmup-notice .spinner {
+  margin: 0;
+  flex-shrink: 0;
+}
+
 /* Torrent Card - Row Style */
 .torrent-card {
   background: var(--bg-primary);
