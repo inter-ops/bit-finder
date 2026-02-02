@@ -19,6 +19,7 @@ export interface WebTorrentInfo {
   done: boolean;
   magnetURI: string;
   files: FileInfo[];
+  metadata?: { title: string; provider?: string; size?: string };
 }
 
 interface FileInfo {
@@ -35,7 +36,7 @@ interface DownloadsProps {
 }
 
 function formatSpeed(bytesPerSecond: number): string {
-  if (bytesPerSecond === 0) return "0 B/s";
+  if (!bytesPerSecond || bytesPerSecond <= 0 || !isFinite(bytesPerSecond)) return "0 B/s";
   const k = 1024;
   const sizes = ["B/s", "KB/s", "MB/s", "GB/s"];
   const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));

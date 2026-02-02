@@ -3,6 +3,7 @@ import { TMDBResult, MovieDetail, TVDetail, SeasonDetail } from "../pages/Browse
 import { TorrentList } from "./TorrentList";
 import { Torrent, Filters } from "../types";
 import { WebTorrentInfo } from "../pages/Downloads";
+import { isWarmupActive, waitForWarmup } from "./CloudflareStatus";
 
 interface ContentDetailProps {
   content: TMDBResult;
@@ -185,6 +186,8 @@ export function ContentDetail({
     fetchSeason();
   }, [selectedSeason, content.id, isTV]);
 
+  const [waitingForWarmup, setWaitingForWarmup] = useState(false);
+
   const searchTorrents = async (query: string, selectedProviders?: string[]) => {
     setLoadingTorrents(true);
     setSearchQuery(query);
@@ -192,6 +195,13 @@ export function ContentDetail({
     // Only reset non-provider filters when it's a new search (no providers passed)
     if (!selectedProviders) {
       setFilters(defaultFilters);
+    }
+
+    // Wait for 1337x warmup if it's in progress
+    if (isWarmupActive()) {
+      setWaitingForWarmup(true);
+      await waitForWarmup(60000);
+      setWaitingForWarmup(false);
     }
 
     try {
@@ -846,6 +856,13 @@ export function ContentDetail({
                       Clear filters
                     </button>
                   )}
+                </div>
+              )}
+
+              {waitingForWarmup && (
+                <div class="warmup-notice">
+                  <div class="spinner" style={{ width: '16px', height: '16px' }}></div>
+                  <span>Waiting for 1337x Cloudflare bypass...</span>
                 </div>
               )}
 

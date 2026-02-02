@@ -4,6 +4,7 @@ import { TorrentList } from "../components/TorrentList";
 import { FilterPanel } from "../components/FilterPanel";
 import { Notification } from "../components/Notification";
 import { Torrent, Filters } from "../types";
+import { isWarmupActive, waitForWarmup } from "../components/CloudflareStatus";
 
 const DEFAULT_FILTERS: Filters = {
   categories: [],
@@ -75,6 +76,8 @@ export default function Search() {
     setFilteredTorrents(result);
   }, [allTorrents, filters]);
 
+  const [waitingForWarmup, setWaitingForWarmup] = useState(false);
+
   const handleSearch = async (query: string, limit: number = 50) => {
     if (!query.trim()) return;
 
@@ -82,6 +85,13 @@ export default function Search() {
     setNotification(null);
     setLastQuery(query);
     setLastLimit(limit);
+
+    // Wait for 1337x warmup if it's in progress
+    if (isWarmupActive()) {
+      setWaitingForWarmup(true);
+      await waitForWarmup(60000);
+      setWaitingForWarmup(false);
+    }
 
     try {
       let url = `/api/search?name=${encodeURIComponent(query)}&limit=${limit}`;
@@ -240,6 +250,13 @@ export default function Search() {
           type={notification.type}
           onClose={() => setNotification(null)}
         />
+      )}
+
+      {waitingForWarmup && (
+        <div class="warmup-notice">
+          <div class="spinner" style={{ width: '16px', height: '16px' }}></div>
+          <span>Waiting for 1337x Cloudflare bypass...</span>
+        </div>
       )}
 
       {allTorrents.length > 0 ? (

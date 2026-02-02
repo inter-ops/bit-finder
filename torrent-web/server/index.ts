@@ -211,10 +211,13 @@ app.get("/api/1337x/warmup-stream", async (c) => {
   });
 });
 
-// 1337x API status
+// 1337x API status (includes server-side warmup tracking)
 app.get("/api/1337x/status", async (c) => {
   const data = await leet.getStatus();
-  return c.json(data);
+  return c.json({
+    ...data,
+    warmup_in_progress: leet.isWarmupInProgress()
+  });
 });
 
 // Get magnet link

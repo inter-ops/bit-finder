@@ -12,6 +12,48 @@ interface CloudflareStatusProps {
   onReady?: () => void;
 }
 
+// Module-level warmup state shared with other components
+let currentWarmupStatus: WarmupStatus["status"] = "idle";
+let warmupReadyResolvers: Array<() => void> = [];
+
+/** Check if warmup is currently in progress */
+export function isWarmupActive(): boolean {
+  return currentWarmupStatus === "warming_up" || currentWarmupStatus === "idle";
+}
+
+/**
+ * Wait for warmup to complete (resolves immediately if already ready/error).
+ * Returns true if 1337x is ready, false if error/timeout.
+ * Polls /api/1337x/status as fallback with a timeout.
+ */
+export async function waitForWarmup(timeoutMs = 60000): Promise<boolean> {
+  if (currentWarmupStatus === "ready") return true;
+  if (currentWarmupStatus === "error") return false;
+
+  // Poll the server status endpoint
+  const pollInterval = 2000;
+  const maxAttempts = Math.ceil(timeoutMs / pollInterval);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    // Check local state first (updated by the CloudflareStatus component)
+    if (currentWarmupStatus === "ready") return true;
+    if (currentWarmupStatus === "error") return false;
+
+    try {
+      const res = await fetch("/api/1337x/status");
+      const data = await res.json();
+      if (data.valid) return true;
+      if (!data.is_fetching && !data.warmup_in_progress && !data.valid) return false;
+    } catch {
+      // Server not reachable, keep polling
+    }
+
+    await new Promise((r) => setTimeout(r, pollInterval));
+  }
+
+  return false; // Timed out
+}
+
 const TOOLTIP_TEXT = `1337x.to uses Cloudflare bot protection.
 This indicator shows the connection status.
 When warming up, a browser opens briefly to bypass Cloudflare.
@@ -39,6 +81,7 @@ export function CloudflareStatus({ onReady }: CloudflareStatusProps) {
       try {
         const data: WarmupStatus = JSON.parse(event.data);
         setStatus(data);
+        currentWarmupStatus = data.status;
 
         if (data.status === "ready") {
           onReady?.();
@@ -56,6 +99,7 @@ export function CloudflareStatus({ onReady }: CloudflareStatusProps) {
       eventSource.close();
       setStatus((prev) => {
         if (prev.status !== "ready") {
+          currentWarmupStatus = "error";
           return {
             status: "error",
             message: "Connection failed",
