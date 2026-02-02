@@ -58,6 +58,36 @@ Search results from multiple providers (torrent-search-api + 1337x) are combined
 - `DOWNLOAD_PATH` — Download directory (default ~/Downloads)
 - `LEET_API_URL` — 1337x Python API URL (default http://localhost:8000)
 - `TMDB_TOKEN` and `OMDB_KEY` are hardcoded in server code
+- `WG_INTERFACE` — WireGuard interface name (default `wg0`)
+- `VPN_REQUIRED` — Set `false` to disable VPN enforcement (default `true`)
+- `VPN_CHECK_INTERVAL` — VPN health check interval in ms (default `30000`)
+
+## VPN (WireGuard) Integration
+
+The server auto-connects to WireGuard on startup and enforces VPN for all torrent operations. A kill switch pauses all torrents if the VPN drops.
+
+### Setup
+
+1. Install WireGuard: `brew install wireguard-tools`
+2. Place config at `/etc/wireguard/wg0.conf` (or your `WG_INTERFACE` name)
+3. Add passwordless sudo for WireGuard commands in `/etc/sudoers.d/wireguard`:
+   ```
+   %staff ALL=(ALL) NOPASSWD: /usr/local/bin/wg, /usr/local/bin/wg-quick
+   ```
+4. Start the server — VPN connects automatically
+
+### API Endpoints
+
+- `GET /api/vpn/status` — Returns VPN connection status + public IP
+
+VPN connect/disconnect is server-managed only (auto-connect on startup). No manual connect/disconnect API is exposed.
+
+### Kill Switch Behavior
+
+- VPN drops → all active torrents paused within `VPN_CHECK_INTERVAL` ms
+- Adding/resuming torrents without VPN → 503 error
+- VPN reconnects → logged, but torrents stay paused (manual resume for safety)
+- Set `VPN_REQUIRED=false` to bypass all VPN enforcement
 
 ## Key Patterns
 

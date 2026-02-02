@@ -2,8 +2,13 @@ import WebTorrent from "webtorrent";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-
-// TODO: automatically connect to vpn with new ip so we never use same location or risk not being on vpn
+import {
+  checkWireGuardInstalled,
+  connectVpn,
+  startHealthCheck,
+  isVpnActive,
+  isVpnRequired
+} from "./vpn.js";
 
 // Configuration - resolve ~ to home directory
 const rawDownloadPath = process.env.DOWNLOAD_PATH || "~/Downloads";
@@ -128,7 +133,31 @@ async function restoreTorrents() {
 }
 
 // Initialize - restore torrents after a delay to let the server start
-setTimeout(() => {
+setTimeout(async () => {
+  if (isVpnRequired()) {
+    // Check WireGuard installation
+    if (!checkWireGuardInstalled()) {
+      console.error(
+        "[VPN] WireGuard tools (wg, wg-quick) not found. Install with: brew install wireguard-tools"
+      );
+    } else {
+      // Auto-connect VPN
+      const status = await connectVpn();
+      if (status.connected) {
+        console.log(`[VPN] Connected — public IP: ${status.publicIp || "unknown"}`);
+      } else {
+        console.error(`[VPN] Failed to connect: ${status.error || "unknown error"}`);
+      }
+
+      // Start health check with kill switch
+      startHealthCheck(() => {
+        pauseAllTorrents();
+      });
+    }
+  } else {
+    console.log("[VPN] VPN enforcement disabled (VPN_REQUIRED=false)");
+  }
+
   restoreTorrents();
 }, 1000);
 
@@ -201,6 +230,11 @@ export async function addTorrent(
     metadata?: { title: string; provider?: string; size?: string };
   } = {}
 ): Promise<TorrentInfo> {
+  // Gate behind VPN if required (skip for restore operations which pass wasComplete/paused)
+  if (isVpnRequired() && !isVpnActive() && !options.paused && !options.wasComplete) {
+    throw new Error("VPN is not connected — cannot add torrent");
+  }
+
   console.log("Adding torrent");
 
   // Check if already added
@@ -310,6 +344,10 @@ export function pauseTorrent(infoHash: string): boolean {
 
 // Resume a torrent
 export function resumeTorrent(infoHash: string): boolean {
+  if (isVpnRequired() && !isVpnActive()) {
+    throw new Error("VPN is not connected — cannot resume torrent");
+  }
+
   const torrent = client.torrents.find((t) => t.infoHash === infoHash);
   if (torrent) {
     // Remove from completedHashes so real progress is reported again
@@ -319,6 +357,21 @@ export function resumeTorrent(infoHash: string): boolean {
     return true;
   }
   return false;
+}
+
+// Pause all active torrents (kill switch)
+export function pauseAllTorrents(): void {
+  let paused = 0;
+  client.torrents.forEach((torrent) => {
+    if (!torrent.paused) {
+      torrent.pause();
+      paused++;
+    }
+  });
+  if (paused > 0) {
+    console.log(`[VPN] Kill switch: paused ${paused} active torrent(s)`);
+    saveState();
+  }
 }
 
 // Remove a torrent
