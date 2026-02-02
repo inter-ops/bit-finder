@@ -19,6 +19,7 @@ import {
   getTorrentPath
 } from "./webtorrent.js";
 import { exec } from "child_process";
+import * as vpn from "./vpn.js";
 
 const app = new Hono();
 
@@ -264,7 +265,8 @@ app.post("/api/download", async (c) => {
   } catch (error) {
     console.error("Download error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to add torrent";
-    return c.json({ error: errorMessage }, 500);
+    const status = errorMessage.includes("VPN") ? 503 : 500;
+    return c.json({ error: errorMessage }, status);
   }
 });
 
@@ -324,7 +326,8 @@ app.post("/api/torrents/:infoHash/resume", async (c) => {
   } catch (error) {
     console.error("Resume torrent error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to resume torrent";
-    return c.json({ error: errorMessage }, 500);
+    const status = errorMessage.includes("VPN") ? 503 : 500;
+    return c.json({ error: errorMessage }, status);
   }
 });
 
@@ -390,6 +393,18 @@ app.post("/api/torrents/:infoHash/reveal", async (c) => {
   } catch (error) {
     console.error("Reveal in Finder error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to reveal in Finder";
+    return c.json({ error: errorMessage }, 500);
+  }
+});
+
+// VPN status
+app.get("/api/vpn/status", async (c) => {
+  try {
+    const status = await vpn.getVpnStatus();
+    return c.json({ ...status, required: vpn.isVpnRequired() });
+  } catch (error) {
+    console.error("VPN status error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to get VPN status";
     return c.json({ error: errorMessage }, 500);
   }
 });
